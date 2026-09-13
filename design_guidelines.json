@@ -1,0 +1,190 @@
+{
+  "app_name": "JobRadar by EevolveX",
+  "personality": "1 iOS-Native Clean (EevolveX Purple Theme)",
+  "personality_one_liner": "A premium, highly-curated career intelligence platform that uses refined purple tones, spacious typography, and soft elevations to build immediate trust and value.",
+  "color": {
+    "surface": "#FFFFFF",
+    "onSurface": "#1F2937",
+    "surfaceSecondary": "#F5F3FF",
+    "onSurfaceSecondary": "#374151",
+    "surfaceTertiary": "#EDE9FE",
+    "onSurfaceTertiary": "#4C1D95",
+    "surfaceInverse": "#4C1D95",
+    "onSurfaceInverse": "#FFFFFF",
+    "brand": "#6D28D9",
+    "brandPrimary": "#7C3AED",
+    "onBrandPrimary": "#FFFFFF",
+    "brandSecondary": "#EDE9FE",
+    "onBrandSecondary": "#4C1D95",
+    "brandTertiary": "#F5F3FF",
+    "onBrandTertiary": "#6D28D9",
+    "success": "#059669",
+    "onSuccess": "#FFFFFF",
+    "warning": "#D97706",
+    "onWarning": "#FFFFFF",
+    "error": "#DC2626",
+    "onError": "#FFFFFF",
+    "info": "#6B7280",
+    "onInfo": "#FFFFFF",
+    "border": "#E5E7EB",
+    "borderStrong": "#D1D5DB",
+    "divider": "#F3F4F6",
+    "muted": "#6B7280",
+    "onBrand": "#FFFFFF"
+  },
+  "typography": {
+    "displayFontFamily": "Plus Jakarta Sans",
+    "textFontFamily": "Plus Jakarta Sans",
+    "scale": {
+      "sm": 12,
+      "base": 14,
+      "lg": 16,
+      "xl": 20,
+      "2xl": 24
+    }
+  },
+  "spacing": {
+    "rule": "Generous vertical breathing room for a premium feel. Use md for inner component padding and xl for section dividers.",
+    "xs": 4,
+    "sm": 8,
+    "md": 12,
+    "lg": 16,
+    "xl": 24,
+    "2xl": 32,
+    "3xl": 48
+  },
+  "radius_tokens": {
+    "sm": 6,
+    "md": 12,
+    "lg": 20,
+    "pill": 999
+  },
+  "shadow_tier": "1",
+  "navigation": "bottom_tabs for Candidate, drawer/stack for Admin",
+  "icon_set": "Phosphor",
+  "glassmorphism": {
+    "enabled": true,
+    "do's": [
+      "Use glassmorphism on the locked-premium card overlay over the blurred job description.",
+      "Apply to sticky bottom CTA containers (e.g., 'Become a Member' button over scrolling content).",
+      "Use on the bottom tab bar."
+    ],
+    "dont's": [
+      "Avoid on form inputs or standard list rows."
+    ]
+  },
+  "platform_libraries": {
+    "glass": {
+      "ios": "expo-glass-effect",
+      "android": "expo-blur",
+      "low_end_android_fallback": "solid surfaceSecondary"
+    },
+    "image": "expo-image",
+    "blur": "expo-blur",
+    "bottom_sheet": "@gorhom/bottom-sheet",
+    "animation": "react-native-reanimated",
+    "gesture": "react-native-gesture-handler"
+  },
+  "screens": [
+    {
+      "name": "Public Home",
+      "purpose": "Introduce the premium platform, explain value, and show membership options.",
+      "states": {
+        "loading": "Centered spinner",
+        "empty": "N/A",
+        "error": "Error message with retry button"
+      },
+      "layout": "Hero image with gradient scrim and CTA overlay. Followed by a 'How it works' vertical step list, a 2-column grid of job categories, and a section displaying the 3 Membership Plans in horizontal scrolling cards."
+    },
+    {
+      "name": "Explore Jobs",
+      "purpose": "List and filter curated job postings.",
+      "states": {
+        "loading": "Skeleton rows of job cards",
+        "empty": "Illustration with 'No matching jobs found. Try adjusting your filters.'",
+        "error": "Failed to load jobs, retry button."
+      },
+      "layout": "Sticky header with search bar and horizontally scrolling filter chips (brandTertiary tinted). List of Job Cards below. Job Cards should show company logo (left), Title and Location, with a 'Premium' lock icon if the user is a non-member."
+    },
+    {
+      "name": "Job Detail",
+      "purpose": "Show details of a single job, gating premium info for non-members.",
+      "states": {
+        "loading": "Skeleton layout",
+        "empty": "N/A",
+        "error": "Failed to load job details."
+      },
+      "layout": "Hero section with Company Logo, Title, Location, and Date. Below, public info (Industry, Work Mode). For Non-Members: A heavily blurred content container with an absolute-positioned Glass panel overlay containing a Lock Icon, 'Premium Details Locked' text, and a sticky primary CTA to 'View Plans'. For Members: Full description, Recruiter Info card (surfaceSecondary), and an external 'Apply Now' CTA."
+    },
+    {
+      "name": "Membership Plans",
+      "purpose": "Show pricing tiers and convert users to paid members.",
+      "states": {
+        "loading": "Spinner",
+        "empty": "N/A",
+        "error": "Failed to load plans."
+      },
+      "layout": "Value proposition header. A vertical stack of pricing cards. Annual Plan is listed first and highlighted with a 'Best Value' / 'Recommended' badge (brandPrimary bg, white text) and a brandPrimary border. Includes a sticky full-width 'Continue to Payment' CTA at the bottom."
+    },
+    {
+      "name": "Candidate Dashboard",
+      "purpose": "Manage membership, view saved jobs, and track payment history.",
+      "states": {
+        "loading": "Skeleton cards",
+        "empty": "Illustration 'No activity yet'",
+        "error": "Failed to load dashboard."
+      },
+      "layout": "Top section: Membership Status Card. Background color dynamically maps to status (success/warning/error/info). Contains plan name, expiry countdown, and renew button. Middle section: Horizontal lists for 'Saved Jobs' and 'Recommended Jobs'. Bottom section: Payment history list."
+    },
+    {
+      "name": "Admin Portal (Developer Panel)",
+      "purpose": "Manage platform data and simulate developer flows.",
+      "states": {
+        "loading": "Spinner",
+        "empty": "N/A",
+        "error": "Access denied"
+      },
+      "layout": "Dashboard grid of metrics. Dedicated Dev/Test panel screen with simple block buttons for actions like 'Simulate Successful Payment', 'Expire Account Now', 'Activate 90-day plan' for easy testing."
+    }
+  ],
+  "images": {
+    "home_hero": {
+      "url": "https://images.unsplash.com/photo-1768101225267-c6fc5678c113?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAzMjd8MHwxfHNlYXJjaHwzfHxwcmVtaXVtJTIwbW9kZXJuJTIwY29ycG9yYXRlJTIwb2ZmaWNlJTIwYnVpbGRpbmclMjBhYnN0cmFjdCUyMG1pbmltYWx8ZW58MHx8fHwxNzg5MzA3Mjk5fDA&ixlib=rb-4.1.0&q=85",
+      "dark": "https://images.unsplash.com/photo-1768101225267-c6fc5678c113?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAzMjd8MHwxfHNlYXJjaHwzfHxwcmVtaXVtJTIwbW9kZXJuJTIwY29ycG9yYXRlJTIwb2ZmaWNlJTIwYnVpbGRpbmclMjBhYnN0cmFjdCUyMG1pbmltYWx8ZW58MHx8fHwxNzg5MzA3Mjk5fDA&ixlib=rb-4.1.0&q=85",
+      "alt": "Modern glass corporate building"
+    },
+    "empty_state_minimal": {
+      "url": "https://images.unsplash.com/photo-1521193089946-7aa29d1fe776?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAxODF8MHwxfHNlYXJjaHwxfHxzb2Z0JTIwY2xlYW4lMjBlbXB0eSUyMHJvb20lMjBzaGFkb3clMjB3aGl0ZSUyMG1pbmltYWwlMjBiYWNrZ3JvdW5kfGVufDB8fHx8MTc4OTMwNzMxMHww&ixlib=rb-4.1.0&q=85",
+      "dark": "https://images.unsplash.com/photo-1521193089946-7aa29d1fe776?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAxODF8MHwxfHNlYXJjaHwxfHxzb2Z0JTIwY2xlYW4lMjBlbXB0eSUyMHJvb20lMjBzaGFkb3clMjB3aGl0ZSUyMG1pbmltYWwlMjBiYWNrZ3JvdW5kfGVufDB8fHx8MTc4OTMwNzMxMHww&ixlib=rb-4.1.0&q=85",
+      "alt": "Soft white fabric background for empty states"
+    },
+    "company_google": {
+      "url": "https://images.unsplash.com/photo-1662947190722-5d272f82a526?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1OTV8MHwxfHNlYXJjaHwxfHxnb29nbGUlMjBsb2dvJTIwcG5nfGVufDB8fHx8MTc4OTE1OTk2Nnww&ixlib=rb-4.1.0&q=85",
+      "alt": "Google Logo"
+    },
+    "company_microsoft": {
+      "url": "https://images.pexels.com/photos/10142683/pexels-photo-10142683.jpeg",
+      "alt": "Microsoft Logo"
+    },
+    "company_amazon": {
+      "url": "https://images.pexels.com/photos/4560039/pexels-photo-4560039.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+      "alt": "Amazon Logo"
+    }
+  ],
+  "haptics": {
+    "tab_press": "light",
+    "filter_chip_toggle": "selection",
+    "primary_button_press": "medium",
+    "save_job_toggle": "success",
+    "dev_panel_action": "heavy"
+  },
+  "instructions_to_main_agent": [
+    "Strictly follow the EevolveX Purple theme constraints. #6D28D9 is the brand base. Avoid all blues and neons.",
+    "Implement the gated content pattern correctly on the Job Detail screen: For non-members, use a heavily blurred container over the private text with a Glass CTA overlay containing a lock icon. Do not leak the private text in the DOM/UI if possible, or heavily obscure it.",
+    "Membership plans should prioritize the Annual tier. Make it visually distinct by default-selecting it, adding a 'Best Value' pill badge, and applying a borderStrong or brandPrimary border around it.",
+    "Candidate Dashboard MUST have a dynamic status card. Map its background color to the 'success', 'warning', 'error', or 'info' tokens respectively for Active, Expiring, Expired, and No Membership statuses.",
+    "All branded company listings (Google, Microsoft, etc.) must use the fetched images (company_google, company_microsoft, etc.).",
+    "Ensure touch targets for filter chips and buttons are at least 44x44pt.",
+    "For the Developer Test Panel, build a simple, utilitarian UI separate from the premium candidate experience to allow toggling subscription states instantly for QA."
+  ]
+}

@@ -1,0 +1,166 @@
+import React, { useState } from "react";
+import { FlatList, Pressable, RefreshControl, Text, TextInput, View, ScrollView } from "react-native";
+import { useLocalSearchParams } from "expo-router";
+import { useQuery } from "@tanstack/react-query";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { MagnifyingGlass, SlidersHorizontal } from "phosphor-react-native";
+
+import { api } from "@/src/api/client";
+import { makeStyles, useTheme } from "@/src/theme";
+import { JobCard, Job } from "@/src/components/JobCard";
+import { Chip, EmptyState } from "@/src/components/ui";
+import { CATEGORIES, WORK_MODES } from "@/src/constants";
+import { useAuth } from "@/src/auth/AuthContext";
+
+export default function Explore() {
+  const styles = useStyles();
+  const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
+  const params = useLocalSearchParams<{ function?: string }>();
+  const { user } = useAuth();
+
+  const [q, setQ] = useState("");
+  const [func, setFunc] = useState<string>(params.function || "All");
+  const [mode, setMode] = useState<string>("All");
+  const [sort, setSort] = useState<"newest" | "relevance">("newest");
+
+  const { data, isLoading, refetch, isRefetching } = useQuery({
+    queryKey: ["jobs", q, func, mode, sort, user?.user_id],
+    queryFn: () =>
+      api("/jobs", {
+        query: { q, function: func, work_mode: mode, sort, limit: 60 },
+        auth: !!user,
+      }),
+  });
+
+  const jobs: Job[] = data?.jobs || [];
+
+  const Header = (
+    <View style={[styles.header, { paddingTop: insets.top + 10 }]}>
+      <Text style={styles.title}>Explore Jobs</Text>
+      <View style={styles.searchBox}>
+        <MagnifyingGlass size={18} color={colors.muted} />
+        <TextInput
+          testID="job-search-input"
+          value={q}
+          onChangeText={setQ}
+          placeholder="Search title, company, skill..."
+          placeholderTextColor={colors.muted}
+          style={styles.searchInput}
+          returnKeyType="search"
+        />
+      </View>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.chipRow}
+        style={{ marginTop: 10 }}
+      >
+        <Chip label="All" selected={func === "All"} onPress={() => setFunc("All")} testID="chip-func-all" />
+        {CATEGORIES.map((c) => (
+          <Chip
+            key={c}
+            label={c.split(" & ")[0]}
+            selected={func === c}
+            onPress={() => setFunc(func === c ? "All" : c)}
+            testID={`chip-func-${c}`}
+          />
+        ))}
+      </ScrollView>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.chipRow}
+        style={{ marginTop: 8 }}
+      >
+        <Chip label="Any mode" selected={mode === "All"} onPress={() => setMode("All")} testID="chip-mode-all" />
+        {WORK_MODES.map((m) => (
+          <Chip
+            key={m}
+            label={m}
+            selected={mode === m}
+            onPress={() => setMode(mode === m ? "All" : m)}
+            testID={`chip-mode-${m}`}
+          />
+        ))}
+        <Pressable
+          testID="sort-toggle"
+          onPress={() => setSort(sort === "newest" ? "relevance" : "newest")}
+          style={styles.sortBtn}
+        >
+          <SlidersHorizontal size={15} color={colors.brandPrimary} />
+          <Text style={styles.sortTxt}>{sort === "newest" ? "Newest" : "Relevance"}</Text>
+        </Pressable>
+      </ScrollView>
+    </View>
+  );
+
+  return (
+    <View style={styles.screen}>
+      <FlatList
+        data={jobs}
+        keyExtractor={(j) => j.job_id}
+        renderItem={({ item }) => (
+          <View style={{ paddingHorizontal: 16, paddingBottom: 12 }}>
+            <JobCard job={item} />
+          </View>
+        )}
+        ListHeaderComponent={Header}
+        stickyHeaderIndices={[0]}
+        refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={colors.brandPrimary} />}
+        ListEmptyComponent={
+          !isLoading ? (
+            <EmptyState
+              title="No matching jobs found"
+              subtitle="Try adjusting your search or filters."
+              testID="jobs-empty"
+            />
+          ) : (
+            <View style={{ padding: 24 }}>
+              <Text style={{ color: colors.muted, textAlign: "center" }}>Loading curated jobs…</Text>
+            </View>
+          )
+        }
+        contentContainerStyle={{ paddingTop: 12, paddingBottom: 24 }}
+        showsVerticalScrollIndicator={false}
+      />
+    </View>
+  );
+}
+
+const useStyles = makeStyles((colors) => ({
+  screen: { flex: 1, backgroundColor: colors.surface },
+  header: {
+    backgroundColor: colors.surface,
+    paddingHorizontal: 16,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.divider,
+  },
+  title: { color: colors.onSurface, fontSize: 26, fontWeight: "900", marginBottom: 12, letterSpacing: -0.5 },
+  searchBox: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: colors.surfaceSecondary,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  searchInput: { flex: 1, paddingVertical: 12, fontSize: 15, color: colors.onSurface },
+  chipRow: { gap: 8, paddingRight: 8 },
+  sortBtn: {
+    flexShrink: 0,
+    height: 36,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 14,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: colors.brandPrimary,
+    backgroundColor: colors.surface,
+  },
+  sortTxt: { color: colors.brandPrimary, fontSize: 13, fontWeight: "700" },
+}));

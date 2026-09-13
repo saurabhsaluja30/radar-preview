@@ -1,0 +1,58 @@
+{
+  "summary": "Backend: 38/38 pytest tests PASSED against the public EXPO_PUBLIC_BACKEND_URL. Covered auth (register/login/me), premium gating (list + detail, non-member locked, no premium/admin fields leaked), demo checkout activation, membership + dashboard reflection, save/unsave, apply-click gating (403 for non-member, 200+link for member), admin login + dashboard (real_revenue vs demo_revenue separated), admin job CRUD (create/update/status/feature/duplicate/delete), forgot-password, and every Developer Test Panel action (activate_90/180/365, expire_now, expiry_7/3/1, reminder_7/3/1, simulate_renewal, simulate_failed_payment, reset_account, delete_subscription). Renewal stacking rules verified: early renewal ADDS duration on top of remaining days (89 -> 179), renewal after expire_now starts fresh from today (~90 days), and expire_now immediately blocks premium fields at /api/jobs. Email logs verified in /api/admin/emails (welcome + membership_activated present). Frontend: Home, Explore (filters + list), Dashboard (shows active Quarterly Plan with days_remaining), Admin login screen and login-flow all render correctly on mobile viewport (390x844). Login persists via localStorage 'jobradar_token'. CRITICAL FRONTEND BUG: /plans route crashes with 'Element type is invalid: expected a string ... but got: undefined. Check the render method of Plans(./plans.tsx)' - the entire demo-checkout UI flow is blocked. Backend /api/checkout/demo works fine when called directly. Also observed 'shadow*' style deprecation warning and 'props.pointerEvents is deprecated' warning across pages; both are non-blocking.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "Plans (/app/frontend/app/plans.tsx)",
+        "issue": "Route /plans throws 'Element type is invalid ... got: undefined. Check the render method of Plans(./plans.tsx)'. All imports (Sparkle/CheckCircle/Circle from phosphor-react-native@3.0.6, Button from @/src/components/ui, ScreenHeader, useAuth, useToast, money, useSafeAreaInsets) resolve to defined exports on disk; suspect either a metro cache/build issue or an incompatibility of a specific phosphor icon (Sparkle / Circle weight='bold') on react-native-web 19.2. Home page uses the same icons and renders fine, so the delta may be Sparkle or one of the theme keys used only here. Blocks the entire demo checkout UI flow. Reference: /app/frontend/app/plans.tsx:6-14, 76, 109-111, 127, 140-145",
+        "testID": "checkout-btn / plan-<plan_id>",
+        "priority": "CRITICAL"
+      }
+    ],
+    "integration_issues": [
+      {
+        "flow": "Demo checkout via UI",
+        "issue": "Plans screen crash prevents candidates from selecting a plan and reaching POST /api/checkout/demo. Backend endpoint itself works (verified via pytest test_demo_checkout_activates_90 and manual). Fixing Plans render restores the end-to-end flow.",
+        "affected_testIDs": ["checkout-btn", "plan-<plan_id>"]
+      }
+    ],
+    "design_issues": [],
+    "react_native_issues": [
+      {
+        "component": "Global styles",
+        "issue": "'shadow*' style props are deprecated in react-native-web; use 'boxShadow'. Emitted as console warnings across most screens. Reference: any StyleSheet using shadowColor/shadowOffset/shadowOpacity/shadowRadius."
+      },
+      {
+        "component": "Pressable / TouchableWithoutFeedback",
+        "issue": "'props.pointerEvents is deprecated. Use style.pointerEvents' warning emitted during navigation. Non-blocking."
+      }
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_jobradar.py",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+  "action_items": [
+    "Fix /plans.tsx render crash. Suggested debug: (a) hot-swap icons one by one (Sparkle -> Star, Circle -> View placeholder) to identify the offending import; (b) clear Metro cache: `rm -rf /app/frontend/.metro-cache && sudo supervisorctl restart expo`; (c) if Sparkle is the culprit on web, replace with another phosphor icon that already renders on the Home screen. Retest by navigating to /plans and completing demo checkout.",
+    "Replace deprecated shadow* style props with boxShadow (react-native-web) or gate them for native only, to silence the console warnings and future-proof against RN 0.85+."
+  ],
+  "critical_code_review_comments": [
+    "server.py is 1345 lines - consider splitting into modules (auth, jobs, admin, dev_panel, email) for maintainability, but not blocking.",
+    "compute_membership() is called per-candidate inside admin_dashboard and admin_subscriptions loops; will not scale beyond a few thousand candidates. Acceptable for MVP.",
+    "CORS is allow_origins=['*'] with allow_credentials=True - browsers ignore credentials with wildcard origin; fine for token-in-header auth but worth restricting for production."
+  ],
+  "updated_files": [
+    "/app/backend/tests/__init__.py (new)",
+    "/app/backend/tests/test_jobradar.py (new - 38 pytest tests)"
+  ],
+  "success_rate": {"backend": "100%", "frontend": "~85% (Home/Explore/Dashboard/Admin login OK; Plans screen crashes)"},
+  "seed_data_creation": "Created several TEST_* candidates (emails ending in @jobradar.io) during the pytest run. Some have active demo subscriptions/payments. Recommend running the reset_account dev action on them or clearing DB if needed. Test candidate test@jobradar.com and admin admin@eevolvex.com are seeded by backend startup and remain functional.",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Backend regression file is /app/backend/tests/test_jobradar.py. Run with `python -m pytest backend/tests/test_jobradar.py -v -n 0` (pytest.ini forces xdist -n 2 which causes race conditions across the shared preview DB - run with -n 0 for deterministic results). All 38 tests pass. Frontend blocker is /plans; retest via mobile viewport 390x844 after main agent fixes the render crash.",
+  "rca_of_issue": "Plans screen crash: React 'Element type is invalid ... got: undefined' means one of the JSX components rendered in Plans() resolves to undefined at runtime on web. All 8 imports in plans.tsx have matching exports on disk (verified: phosphor-react-native@3.0.6 exports Sparkle/CheckCircle/Circle; ui.tsx exports Button; Brand.tsx exports ScreenHeader; Toast.tsx exports useToast; format.ts exports money; theme.ts exports makeStyles/useTheme; AuthContext exports useAuth). Suspect: react-native-web edge case with a specific phosphor icon variant (e.g. Sparkle weight='fill' or Circle weight='bold') or a stale Metro cache from prior imports. Reproduction: navigate to https://radar-preview-9.preview.emergentagent.com/plans on 390x844 viewport - ErrorBoundary catches the render crash and shows 'Something went wrong'. Mitigation: (1) clear .metro-cache and restart expo, (2) if crash persists, temporarily comment out the icon usages in plans.tsx one-by-one to isolate."
+}
