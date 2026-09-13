@@ -60,7 +60,7 @@ function AdminLogin() {
             <ShieldStar size={30} color="#FFFFFF" weight="fill" />
           </View>
           <Text style={styles.h1}>Admin Portal</Text>
-          <Text style={styles.sub}>JobRadar by EevolveX</Text>
+          <Text style={styles.sub}>JobRadar by Evolveminds</Text>
         </View>
         <View style={{ gap: 14 }}>
           <Input label="Admin Email" value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" testID="admin-email" />

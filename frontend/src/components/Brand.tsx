@@ -30,7 +30,7 @@ export function BrandLogo({
           JobRadar
         </Text>
         <Text style={{ color: sub, fontSize: size === "sm" ? 9 : 10, fontWeight: "600", letterSpacing: 0.5 }}>
-          by EevolveX
+          by Evolveminds
         </Text>
       </View>
     </View>

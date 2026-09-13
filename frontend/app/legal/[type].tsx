@@ -7,17 +7,17 @@ import { makeStyles, useTheme } from "@/src/theme";
 import { ScreenHeader } from "@/src/components/Brand";
 
 const DISCLAIMER =
-  "JobRadar by EevolveX provides curated job information for discovery purposes only. We do not guarantee interviews, selection, employment, salary, or response from employers. Candidates are responsible for applying directly and verifying job information.";
+  "JobRadar by Evolveminds provides curated job information for discovery purposes only. We do not guarantee interviews, selection, employment, salary, or response from employers. Candidates are responsible for applying directly and verifying job information.";
 
 const CONTENT: Record<string, { title: string; body: string[] }> = {
   terms: {
     title: "Terms & Conditions",
     body: [
-      "By using JobRadar by EevolveX, you agree to these Terms. JobRadar is a paid curated job-discovery membership platform operated by EevolveX Consulting LLP.",
+      "By using JobRadar by Evolveminds, you agree to these Terms. JobRadar is a paid curated job-discovery membership platform operated by Evolveminds.",
       "Membership fees provide access to curated job information and platform features. Membership does not guarantee an interview, job offer, employment, salary, or response from any employer.",
       "Jobs are curated from publicly available and legitimate sources. Candidates apply directly to employers and are responsible for verifying all job information.",
       "You agree to use the platform lawfully and not to misuse, scrape, or resell curated content.",
-      "EevolveX may update plans, pricing, and features from time to time.",
+      "Evolveminds may update plans, pricing, and features from time to time.",
     ],
   },
   privacy: {

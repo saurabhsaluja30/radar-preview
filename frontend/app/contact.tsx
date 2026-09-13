@@ -11,7 +11,7 @@ import { ScreenHeader } from "@/src/components/Brand";
 import { Button, Input, Card } from "@/src/components/ui";
 import { useToast } from "@/src/components/Toast";
 
-const SUPPORT_EMAIL = "support@eevolvex.com";
+const SUPPORT_EMAIL = "support@evolveminds.com";
 
 export default function Contact() {
   const styles = useStyles();
@@ -45,7 +45,7 @@ export default function Contact() {
         <Card style={{ marginTop: 14, gap: 12 }}>
           <View style={styles.row}>
             <Buildings size={20} color={colors.brandPrimary} weight="duotone" />
-            <Text style={styles.rowTxt}>EevolveX Consulting LLP</Text>
+            <Text style={styles.rowTxt}>Evolveminds</Text>
           </View>
           <View style={styles.row}>
             <EnvelopeSimple size={20} color={colors.brandPrimary} weight="duotone" />

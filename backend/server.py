@@ -28,7 +28,7 @@ db = client[os.environ["DB_NAME"]]
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger("jobradar")
 
-app = FastAPI(title="JobRadar by EevolveX")
+app = FastAPI(title="JobRadar by Evolveminds")
 api = APIRouter(prefix="/api")
 
 # ---------------------------------------------------------------------------
@@ -36,7 +36,7 @@ api = APIRouter(prefix="/api")
 # ---------------------------------------------------------------------------
 EMAIL_BASE_URL = "https://integrations.emergentagent.com"
 EMAIL_KEY = os.environ.get("EMERGENT_EMAIL_KEY")
-EMAIL_FROM_NAME = os.environ.get("EMAIL_FROM_NAME", "JobRadar by EevolveX")
+EMAIL_FROM_NAME = os.environ.get("EMAIL_FROM_NAME", "JobRadar by Evolveminds")
 
 _SHORTENERS = ("bit.ly", "tinyurl.com", "t.co", "is.gd", "cutt.ly", "goo.gl", "rebrand.ly")
 _CRED_ASK = ("reply with your password", "reply with the code", "send your password", "cvv",
@@ -118,11 +118,11 @@ def _wrap_email(title: str, inner: str) -> str:
         '<table role="presentation" width="560" style="background:#FFFFFF;border-radius:16px;overflow:hidden">'
         '<tr><td style="background:#6D28D9;padding:20px 28px">'
         '<span style="color:#FFFFFF;font-size:20px;font-weight:700">JobRadar</span>'
-        '<span style="color:#DDD6FE;font-size:13px"> by EevolveX</span></td></tr>'
+        '<span style="color:#DDD6FE;font-size:13px"> by Evolveminds</span></td></tr>'
         f'<tr><td style="padding:28px"><h1 style="color:#4C1D95;font-size:20px;margin:0 0 16px">{escape(title)}</h1>'
         f'{inner}</td></tr>'
         '<tr><td style="padding:18px 28px;background:#F5F3FF">'
-        '<p style="color:#6B7280;font-size:12px;margin:0">JobRadar by EevolveX &mdash; Stop Searching. Start Discovering.</p>'
+        '<p style="color:#6B7280;font-size:12px;margin:0">JobRadar by Evolveminds &mdash; Stop Searching. Start Discovering.</p>'
         '<p style="color:#9CA3AF;font-size:11px;margin:8px 0 0">We never ask for your password or card details by email. '
         'JobRadar provides curated job information for discovery only and does not guarantee employment.</p>'
         '</td></tr></table></td></tr></table>'
@@ -212,7 +212,7 @@ async def create_session(user_id: str) -> str:
     return token
 
 
-DISCLAIMER = ("JobRadar by EevolveX provides curated job information for discovery purposes only. "
+DISCLAIMER = ("JobRadar by Evolveminds provides curated job information for discovery purposes only. "
               "We do not guarantee interviews, selection, employment, salary, or response from employers. "
               "Candidates are responsible for applying directly and verifying job information.")
 
@@ -465,10 +465,10 @@ async def register(req: RegisterReq):
     await db.users.insert_one(dict(doc))
     token = await create_session(user_id)
     inner = (f'<p style="color:#374151;font-size:15px">Hi {escape(req.full_name)},</p>'
-             '<p style="color:#374151;font-size:15px">Welcome to JobRadar by EevolveX! Your account is ready. '
+             '<p style="color:#374151;font-size:15px">Welcome to JobRadar by Evolveminds! Your account is ready. '
              'Choose a membership plan to unlock curated job opportunities and apply directly to employers.</p>')
     await send_and_log_email(candidate_id=user_id, to=req.email.lower(), email_type="welcome",
-                             subject="Welcome to JobRadar by EevolveX", html=_wrap_email("Welcome aboard!", inner))
+                             subject="Welcome to JobRadar by Evolveminds", html=_wrap_email("Welcome aboard!", inner))
     user = await db.users.find_one({"user_id": user_id}, {"_id": 0, "password": 0})
     return {"token": token, "user": user}
 
@@ -521,10 +521,10 @@ async def google_session(req: SessionReq):
             "created_at": now_iso(), "updated_at": now_iso(), "status": "active",
         })
         inner = (f'<p style="color:#374151;font-size:15px">Hi {escape(data.get("name") or "there")},</p>'
-                 '<p style="color:#374151;font-size:15px">Welcome to JobRadar by EevolveX! '
+                 '<p style="color:#374151;font-size:15px">Welcome to JobRadar by Evolveminds! '
                  'Choose a membership plan to unlock curated job opportunities.</p>')
         await send_and_log_email(candidate_id=user_id, to=email, email_type="welcome",
-                                 subject="Welcome to JobRadar by EevolveX",
+                                 subject="Welcome to JobRadar by Evolveminds",
                                  html=_wrap_email("Welcome aboard!", inner))
     token = await create_session(user_id)
     user = await db.users.find_one({"user_id": user_id}, {"_id": 0, "password": 0})
@@ -605,7 +605,7 @@ async def update_profile(req: ProfileReq, user=Depends(get_current_user)):
 @api.get("/config")
 async def get_config():
     return {
-        "brand": "JobRadar by EevolveX",
+        "brand": "JobRadar by Evolveminds",
         "tagline": "Stop Searching. Start Discovering.",
         "disclaimer": DISCLAIMER,
         "categories": [
@@ -1294,7 +1294,7 @@ async def seed():
     if not await db.users.find_one({"email": admin_email}):
         await db.users.insert_one({
             "user_id": f"user_{uuid.uuid4().hex[:12]}", "email": admin_email,
-            "full_name": "EevolveX Admin", "mobile": None, "password": hash_pw("Admin@12345"),
+            "full_name": "Evolveminds Admin", "mobile": None, "password": hash_pw("Admin@12345"),
             "role": "admin", "auth_provider": "password", "picture": None, "consent": True,
             "suspended": False, "created_at": now_iso(), "updated_at": now_iso(), "status": "active"})
         logger.info("Seeded admin user")
@@ -1331,7 +1331,7 @@ async def shutdown():
 
 @api.get("/")
 async def root():
-    return {"message": "JobRadar by EevolveX API", "status": "ok"}
+    return {"message": "JobRadar by Evolveminds API", "status": "ok"}
 
 
 app.include_router(api)

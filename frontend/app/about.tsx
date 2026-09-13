@@ -25,7 +25,7 @@ export default function About() {
         <BrandLogo size="lg" onLight />
         <Text style={styles.h1}>A premium career intelligence platform</Text>
         <Text style={styles.p}>
-          JobRadar is powered by <Text style={styles.b}>EevolveX Consulting LLP</Text>. Instead of spending
+          JobRadar is powered by <Text style={styles.b}>Evolveminds</Text>. Instead of spending
           hours searching everywhere, members access a curated collection of relevant opportunities in one place.
         </Text>
         <View style={{ gap: 12, marginTop: 20 }}>

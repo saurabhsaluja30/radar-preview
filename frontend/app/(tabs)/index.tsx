@@ -231,7 +231,7 @@ export default function Home() {
               </Pressable>
             ))}
           </View>
-          <Text style={styles.footerBrand}>JobRadar by EevolveX · Stop Searching. Start Discovering.</Text>
+          <Text style={styles.footerBrand}>JobRadar by Evolveminds · Stop Searching. Start Discovering.</Text>
         </View>
       </ScrollView>
     </View>
