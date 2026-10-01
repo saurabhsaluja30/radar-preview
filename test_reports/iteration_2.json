@@ -1,0 +1,58 @@
+{
+  "summary": "Iteration 2 (incremental update). Backend: 27/27 pytest tests PASSED against the public EXPO_PUBLIC_BACKEND_URL. Verified: (a) GET /api/plans has NEW prices Quarterly=499/90d, Half-Yearly=699/180d, Annual=999/365d. (b) POST /api/auth/register rejects 400 for each of the 5 new mandatory fields (industry, current_designation, current_salary, preferred_location, preferred_work_mode) and persists industry + preferred_industries + preferred_work_mode on success. (c) GET /api/jobs?region=International returns intl jobs with region/country/city/currency/visa_info/industry_category; GET /api/jobs?region=India filters India jobs; GET /api/jobs?industry_category=IT%20%26%20Technology filters correctly; existing jobs backfilled with industry_category + region=India. (d) GET /api/jobs/{id} exposes region/country/city/visa_info/industry_category to non-members while premium fields (description/recruiter_email/application_link/salary_range) remain locked. (e) POST and PUT /api/admin/jobs persist industry_category, region, city, country, currency, designation, visa_info; admin filters by region=International, industry_category and country all work; GET /api/admin/candidates?industry=... filters and candidate payload exposes industry/current_designation/current_salary/preferred_industries/preferred_designation/preferred_work_mode. (f) PUT /api/auth/profile saves new fields. (g) Dashboard recommended_jobs honour preferred_industries. (h) Regression: login, demo checkout (quarterly=₹499), membership activation, admin dashboard (real vs demo revenue) all green. Frontend (mobile 390x844): Home shows 5 industry tiles (HR/Finance/IT/Travel/BPO) + India Jobs + International Jobs tiles. Plans screen RENDERS SUCCESSFULLY (prior crash fixed) with the 'What opportunities will you get?' notice and prices ₹499/₹699/₹999. Register screen shows the notice, mandatory Industry (HR/Finance/IT/Travel/BPO/Other), Current Designation, Current Annual CTC, Preferred Job Location, Preferred Work Mode (WFO/Hybrid/Remote/Any), multi-select Preferred Industry, Preferred Designation. Explore shows region chips (All regions/India Jobs/International) + industry chips (All/HR/Finance/IT/Travel/BPO) + work-mode chips and 'Intl · <country>' badges on international jobs. Admin jobs list filters by region (All/India/International) + industry chips (HR/Finance/IT/Travel/BPO) and lists intl jobs after admin login. Admin job-edit exposes Industry/Region/Currency chips + City/Country/Designation/Visa inputs. Deprecated shadow* and props.pointerEvents warnings remain (non-blocking).",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "Admin Jobs List (/app/frontend/app/admin/jobs.tsx)",
+        "issue": "Admin jobs rows show 'Company · <blank>' when a job has a `city` but no legacy `location` field (e.g. the newly seeded intl 'QA Admin Intl Job' with city=Toronto renders as 'TestCo · '). The row subtitle should fall back to `city` (and ideally include country for intl). Minor.",
+        "testID": "n/a",
+        "priority": "LOW"
+      }
+    ],
+    "integration_issues": [
+      {
+        "flow": "Admin → Jobs list first fetch after navigation",
+        "issue": "On first navigation to /admin/jobs the api client fires one request before AuthContext hydrates the in-memory token (observed as a transient 401 followed by a 200 retry). Not user-visible but creates noise in logs. Consider gating the react-query call on `authReady`/token presence.",
+        "affected_testIDs": []
+      }
+    ],
+    "design_issues": [],
+    "react_native_issues": [
+      {
+        "component": "Global styles",
+        "issue": "'shadow*' style props still deprecated on react-native-web; recommend `boxShadow` or Platform.select to silence warnings."
+      },
+      {
+        "component": "Pressable/TouchableWithoutFeedback",
+        "issue": "'props.pointerEvents is deprecated. Use style.pointerEvents' warning still emitted."
+      }
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_jobradar.py",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+  "action_items": [
+    "(Optional, low) Admin jobs list: show `city` (and country for region=International) when `location` is empty — currently renders 'Company · ' for the new intl seed job.",
+    "(Optional, low) Gate the admin jobs react-query fetch on token presence to avoid the transient 401 on first navigation.",
+    "(Optional, non-blocking) Migrate deprecated shadow* styles to boxShadow and remove props.pointerEvents usages for react-native-web."
+  ],
+  "critical_code_review_comments": [
+    "server.py now ~1479 lines — splitting into modules (auth, jobs, admin, dev_panel, migrations, email) would improve maintainability but is not blocking.",
+    "Startup migrations are idempotent and ran cleanly: plan price updates, job region/currency/city/industry_category backfill, 3 seeded intl demo jobs. Verified via admin jobs list and GET /api/jobs?region=International.",
+    "Register endpoint rejects missing mandatory fields with HTTP 400 and a clear message per field — good UX; however the error returns only the first missing field (sequential checks). Could be aggregated for form-level errors, but not blocking."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_jobradar.py (rewritten for Iteration 2: 27 tests covering new plan prices, mandatory register fields, intl jobs, admin new fields/filters, profile update, dashboard preference matching, admin candidate industry filter, demo checkout at new price)"
+  ],
+  "success_rate": {"backend": "100% (27/27)", "frontend": "~98% (Home, Plans, Register, Explore, Admin login, Admin dashboard, Admin jobs list + filters, Admin job-edit all pass; one cosmetic admin-list subtitle issue)"},
+  "seed_data_creation": "Pytest run created several TEST_* candidates on @jobradar.io; one TEST intl admin job was created and then deleted inside test_admin_create_job_with_new_fields. No manual seeding needed — the backend startup already seeded the 3 intl demo jobs (Singapore/London/Dubai) + an earlier 'QA Admin Intl Job' in Toronto.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Use `python -m pytest backend/tests/test_jobradar.py -v -n 0` for deterministic runs (pytest.ini defaults to xdist -n 2 which races the shared preview DB). All 27 tests pass. Admin UI requires logging in through /admin (email+password form) before navigating deep links — directly injecting the token in localStorage will not sync the in-memory api client token.",
+  "rca_of_issue": "n/a — all previously reported blockers (Plans screen crash) are fixed in this iteration."
+}

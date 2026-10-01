@@ -8,6 +8,36 @@ export const CATEGORIES = [
   "Other Professional Roles",
 ];
 
+// The five industries JobRadar focuses on (used for candidate profile + job category)
+export const INDUSTRIES = [
+  "HR & Recruitment",
+  "Finance & Accounting",
+  "IT & Technology",
+  "Travel & Hospitality",
+  "BPO / Customer Experience",
+];
+export const INDUSTRIES_WITH_OTHER = [...INDUSTRIES, "Other"];
+
+export const INDUSTRY_SHORT: Record<string, string> = {
+  "HR & Recruitment": "HR",
+  "Finance & Accounting": "Finance",
+  "IT & Technology": "IT",
+  "Travel & Hospitality": "Travel",
+  "BPO / Customer Experience": "BPO",
+  Other: "Other",
+};
+
+export const REGIONS = ["India", "International"];
+export const PREF_WORK_MODES = ["Work From Office", "Hybrid", "Remote", "Any"];
+export const CURRENCIES = ["INR", "USD", "GBP", "EUR", "AED", "SGD", "AUD", "CAD"];
+
+export const OPPORTUNITY_NOTICE =
+  "JobRadar currently provides curated job opportunities primarily across HR & Recruitment, Finance & Accounting, " +
+  "IT & Technology, Travel & Hospitality, and BPO / Customer Experience. We also publish selected opportunities from " +
+  "India and international markets. Please select a membership only if these job categories are relevant to your " +
+  "career interests. JobRadar provides access to curated job information and application opportunities. Membership " +
+  "does not guarantee a job, interview or employment.";
+
 export const WORK_MODES = ["Work From Office", "Hybrid", "Remote"];
 
 export const EXPERIENCE_RANGES = ["0-2 years", "2-5 years", "5-8 years", "8+ years"];

@@ -10,6 +10,7 @@ import { useAuth } from "@/src/auth/AuthContext";
 import { Button, Card, Badge } from "@/src/components/ui";
 import { ScreenHeader } from "@/src/components/Brand";
 import { MembershipCard } from "@/src/components/MembershipCard";
+import { OpportunityNotice } from "@/src/components/OpportunityNotice";
 import { money, formatDate } from "@/src/utils/format";
 
 export default function Membership() {
@@ -46,6 +47,10 @@ export default function Membership() {
       <ScreenHeader title="Membership" />
       <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: insets.bottom + 24 }} showsVerticalScrollIndicator={false}>
         <MembershipCard membership={membership} onRenew={() => router.push("/plans")} />
+
+        <View style={{ marginTop: 16 }}>
+          <OpportunityNotice />
+        </View>
 
         <Text style={styles.section}>Available Plans</Text>
         <View style={{ gap: 10 }}>

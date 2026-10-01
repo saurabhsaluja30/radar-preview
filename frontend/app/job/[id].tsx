@@ -128,12 +128,19 @@ export default function JobDetail() {
           <Text style={styles.sectionTitle}>Overview</Text>
           <View style={styles.kvGrid}>
             <KV label="Function" value={job.function} />
-            <KV label="Industry" value={job.industry} />
-            <KV label="Sub-function" value={job.sub_function} />
+            <KV label="Industry" value={job.industry_category || job.function} />
+            <KV label="Region" value={job.region} />
+            <KV label="City" value={job.city || job.location} />
             <KV label="Country" value={job.country} />
             <KV label="Posted" value={formatDate(job.date_added)} />
             <KV label="Deadline" value={formatDate(job.application_deadline)} />
           </View>
+          {job.visa_info ? (
+            <View style={styles.visaBox}>
+              <Text style={styles.visaLabel}>Work Authorization / Visa</Text>
+              <Text style={styles.visaTxt}>{job.visa_info}</Text>
+            </View>
+          ) : null}
         </View>
 
         {/* Premium content */}
@@ -293,6 +300,9 @@ const useStyles = makeStyles((colors) => ({
   recTxt: { color: colors.onSurfaceSecondary, fontSize: 14, fontWeight: "600" },
   disclaimerBox: { marginTop: 20, backgroundColor: colors.surfaceSecondary, padding: 14, borderRadius: 12 },
   disclaimerTxt: { color: colors.muted, fontSize: 12, lineHeight: 18 },
+  visaBox: { marginTop: 14, backgroundColor: colors.brandTertiary, padding: 14, borderRadius: 12 },
+  visaLabel: { color: colors.onSurfaceTertiary, fontSize: 13, fontWeight: "800" },
+  visaTxt: { color: colors.onSurfaceSecondary, fontSize: 13, lineHeight: 19, marginTop: 4 },
   lockedWrap: { marginTop: 14, borderRadius: 18, overflow: "hidden", minHeight: 280 },
   fakeContent: { padding: 20, gap: 14, backgroundColor: colors.surfaceSecondary, minHeight: 280 },
   fakeLine: { height: 12, borderRadius: 6, backgroundColor: colors.surfaceTertiary },

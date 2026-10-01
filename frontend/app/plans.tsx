@@ -10,6 +10,7 @@ import { makeStyles, useTheme } from "@/src/theme";
 import { useAuth } from "@/src/auth/AuthContext";
 import { Button } from "@/src/components/ui";
 import { ScreenHeader } from "@/src/components/Brand";
+import { OpportunityNotice } from "@/src/components/OpportunityNotice";
 import { useToast } from "@/src/components/Toast";
 import { money } from "@/src/utils/format";
 
@@ -75,6 +76,10 @@ export default function Plans() {
         <View style={styles.demoBanner}>
           <Sparkle size={16} color={colors.warning} weight="fill" />
           <Text style={styles.demoTxt}>Demo mode — no real payment is charged.</Text>
+        </View>
+
+        <View style={{ marginTop: 16 }}>
+          <OpportunityNotice />
         </View>
 
         <View style={{ gap: 14, marginTop: 18 }}>

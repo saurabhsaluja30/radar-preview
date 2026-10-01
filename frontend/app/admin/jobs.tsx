@@ -10,7 +10,7 @@ import { makeStyles, useTheme } from "@/src/theme";
 import { ScreenHeader } from "@/src/components/Brand";
 import { Card, Badge, Chip } from "@/src/components/ui";
 import { useToast } from "@/src/components/Toast";
-import { JOB_STATUSES } from "@/src/constants";
+import { JOB_STATUSES, INDUSTRIES, INDUSTRY_SHORT, REGIONS } from "@/src/constants";
 
 export default function AdminJobs() {
   const styles = useStyles();
@@ -21,11 +21,13 @@ export default function AdminJobs() {
   const qc = useQueryClient();
   const [q, setQ] = useState("");
   const [status, setStatus] = useState("All");
+  const [region, setRegion] = useState("All");
+  const [ind, setInd] = useState("All");
   const [menuFor, setMenuFor] = useState<string | null>(null);
 
   const { data } = useQuery({
-    queryKey: ["admin-jobs", q, status],
-    queryFn: () => api("/admin/jobs", { query: { q, status } }),
+    queryKey: ["admin-jobs", q, status, region, ind],
+    queryFn: () => api("/admin/jobs", { query: { q, status, region, industry_category: ind } }),
   });
   const jobs: any[] = data?.jobs || [];
 
@@ -61,6 +63,18 @@ export default function AdminJobs() {
             <Chip key={s} label={s} selected={status === s} onPress={() => setStatus(s)} />
           ))}
         </ScrollView>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingTop: 8 }}>
+          <Chip label="All regions" selected={region === "All"} onPress={() => setRegion("All")} testID="admin-region-all" />
+          {REGIONS.map((r) => (
+            <Chip key={r} label={r} selected={region === r} onPress={() => setRegion(region === r ? "All" : r)} testID={`admin-region-${r}`} />
+          ))}
+        </ScrollView>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingTop: 8 }}>
+          <Chip label="All" selected={ind === "All"} onPress={() => setInd("All")} testID="admin-ind-all" />
+          {INDUSTRIES.map((c) => (
+            <Chip key={c} label={INDUSTRY_SHORT[c] || c} selected={ind === c} onPress={() => setInd(ind === c ? "All" : c)} testID={`admin-ind-${c}`} />
+          ))}
+        </ScrollView>
       </View>
 
       <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: insets.bottom + 24, gap: 10 }} showsVerticalScrollIndicator={false}>
@@ -69,7 +83,7 @@ export default function AdminJobs() {
             <View style={{ flexDirection: "row", justifyContent: "space-between", gap: 10 }}>
               <Pressable style={{ flex: 1 }} onPress={() => router.push({ pathname: "/admin/job-edit", params: { id: j.job_id } })}>
                 <Text style={styles.jobTitle}>{j.title}</Text>
-                <Text style={styles.jobCompany}>{j.company} · {j.location}</Text>
+                <Text style={styles.jobCompany}>{j.company} · {j.location || j.city || j.country}</Text>
                 <View style={{ flexDirection: "row", gap: 6, marginTop: 8 }}>
                   <Badge label={j.status} color={j.status === "Published" ? "success" : j.status === "Draft" ? "warning" : "info"} />
                   {j.featured ? <Badge label="Featured" color="brand" /> : null}

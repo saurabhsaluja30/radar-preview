@@ -22,6 +22,15 @@ Build a production-ready, mobile job-discovery **membership** platform for Eevol
 - Premium gating enforced at API (never just hidden buttons). Admin notes / verification score never exposed.
 - Admin: dashboard metrics (real vs demo revenue separated), job CRUD + status/feature/duplicate, candidate mgmt (extend/suspend), subscription mgmt (cancel), payment reports, email logs + announcements, Developer Test Panel (activate 90/180/365, expire now, expiry 7/3/1, reminders 7/3/1, simulate failed/renewal, reset/delete).
 
+## Update (2026-10-01) — Pricing, Profiles & International Jobs
+- Prices: Quarterly ₹499/90d, Half-Yearly ₹699/180d, Annual ₹999/365d (idempotent startup migration; plans read dynamically everywhere).
+- Candidate registration/profile now collect Industry (5 + Other), Current Designation, Current Annual CTC, Preferred Job Location, Preferred Work Mode, multi-select Preferred Industries, Preferred Designation. Existing users show "Not Provided" and can edit in Profile.
+- International jobs: jobs carry region (India/International), city, country, currency, visa/work-authorization info; existing jobs backfilled (region=India, industry_category from function); 3 international demo jobs seeded. Candidates filter by region/country/industry; admin filters jobs by region/industry/country and candidates by industry.
+- Job matching: dashboard recommendations use preferred_industries + preferred_work_mode.
+- Pre-payment "What opportunities will you get?" notice on Plans, Membership and Registration. Home nav = HR/Finance/IT/Travel/BPO + India Jobs/International Jobs.
+- Admin job editor extended with Industry, Region, City, Country, Currency, Designation, Visa fields.
+- Verified: backend 27/27 tests; frontend flows green. No existing data deleted.
+
 ## Implemented (2026-06-13)
 - Full backend (all above) — verified 38/38 automated tests (auth, gating, demo checkout, renewal stacking, expiry blocks access, all 15 dev-panel actions, revenue separation, save/apply, admin CRUD, emails, forgot-password).
 - Full frontend: all candidate + admin + public + legal screens; purple theme; locked glass overlay; keyboard-aware forms; toasts.

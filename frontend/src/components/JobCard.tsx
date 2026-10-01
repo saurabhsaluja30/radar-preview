@@ -19,6 +19,8 @@ export type Job = {
   locked?: boolean;
   is_saved?: boolean;
   preview?: string;
+  region?: string;
+  country?: string;
 };
 
 export function JobCard({ job, testID }: { job: Job; testID?: string }) {
@@ -55,6 +57,11 @@ export function JobCard({ job, testID }: { job: Job; testID?: string }) {
       </View>
 
       <View style={styles.tags}>
+        {job.region === "International" && job.country ? (
+          <View style={[styles.tag, { backgroundColor: colors.surfaceInverse }]}>
+            <Text style={[styles.tagTxt, { color: colors.onSurfaceInverse }]}>Intl · {job.country}</Text>
+          </View>
+        ) : null}
         {job.location ? (
           <View style={styles.tag}>
             <MapPin size={13} color={colors.onSurfaceTertiary} weight="regular" />

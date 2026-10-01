@@ -9,26 +9,27 @@ import { api } from "@/src/api/client";
 import { makeStyles, useTheme } from "@/src/theme";
 import { JobCard, Job } from "@/src/components/JobCard";
 import { Chip, EmptyState } from "@/src/components/ui";
-import { CATEGORIES, WORK_MODES } from "@/src/constants";
+import { INDUSTRIES, INDUSTRY_SHORT, WORK_MODES, REGIONS } from "@/src/constants";
 import { useAuth } from "@/src/auth/AuthContext";
 
 export default function Explore() {
   const styles = useStyles();
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
-  const params = useLocalSearchParams<{ function?: string }>();
+  const params = useLocalSearchParams<{ function?: string; industry_category?: string; region?: string }>();
   const { user } = useAuth();
 
   const [q, setQ] = useState("");
-  const [func, setFunc] = useState<string>(params.function || "All");
+  const [cat, setCat] = useState<string>(params.industry_category || params.function || "All");
+  const [region, setRegion] = useState<string>(params.region || "All");
   const [mode, setMode] = useState<string>("All");
   const [sort, setSort] = useState<"newest" | "relevance">("newest");
 
   const { data, isLoading, refetch, isRefetching } = useQuery({
-    queryKey: ["jobs", q, func, mode, sort, user?.user_id],
+    queryKey: ["jobs", q, cat, region, mode, sort, user?.user_id],
     queryFn: () =>
       api("/jobs", {
-        query: { q, function: func, work_mode: mode, sort, limit: 60 },
+        query: { q, industry_category: cat, region, work_mode: mode, sort, limit: 60 },
         auth: !!user,
       }),
   });
@@ -56,14 +57,31 @@ export default function Explore() {
         contentContainerStyle={styles.chipRow}
         style={{ marginTop: 10 }}
       >
-        <Chip label="All" selected={func === "All"} onPress={() => setFunc("All")} testID="chip-func-all" />
-        {CATEGORIES.map((c) => (
+        <Chip label="All regions" selected={region === "All"} onPress={() => setRegion("All")} testID="chip-region-all" />
+        {REGIONS.map((r) => (
+          <Chip
+            key={r}
+            label={r === "India" ? "India Jobs" : "International"}
+            selected={region === r}
+            onPress={() => setRegion(region === r ? "All" : r)}
+            testID={`chip-region-${r}`}
+          />
+        ))}
+      </ScrollView>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.chipRow}
+        style={{ marginTop: 8 }}
+      >
+        <Chip label="All" selected={cat === "All"} onPress={() => setCat("All")} testID="chip-ind-all" />
+        {INDUSTRIES.map((c) => (
           <Chip
             key={c}
-            label={c.split(" & ")[0]}
-            selected={func === c}
-            onPress={() => setFunc(func === c ? "All" : c)}
-            testID={`chip-func-${c}`}
+            label={INDUSTRY_SHORT[c] || c}
+            selected={cat === c}
+            onPress={() => setCat(cat === c ? "All" : c)}
+            testID={`chip-ind-${c}`}
           />
         ))}
       </ScrollView>

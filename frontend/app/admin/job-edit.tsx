@@ -10,11 +10,12 @@ import { makeStyles, useTheme } from "@/src/theme";
 import { ScreenHeader } from "@/src/components/Brand";
 import { Button, Input, Chip } from "@/src/components/ui";
 import { useToast } from "@/src/components/Toast";
-import { CATEGORIES, WORK_MODES, JOB_STATUSES } from "@/src/constants";
+import { CATEGORIES, WORK_MODES, JOB_STATUSES, INDUSTRIES_WITH_OTHER, INDUSTRY_SHORT, REGIONS, CURRENCIES } from "@/src/constants";
 
 const EMPTY: any = {
-  title: "", company: "", function: "", sub_function: "", industry: "", location: "",
-  country: "India", work_mode: "Work From Office", experience_required: "", salary_range: "",
+  title: "", company: "", function: "", industry_category: "", sub_function: "", industry: "",
+  designation: "", region: "India", location: "", city: "", country: "India", currency: "INR",
+  visa_info: "", work_mode: "Work From Office", experience_required: "", salary_range: "",
   employment_type: "Full-time", description: "", key_responsibilities: "", required_skills: "",
   preferred_skills: "", recruiter_name: "", recruiter_email: "", application_link: "",
   source_link: "", application_deadline: "", status: "Published", featured: false,
@@ -25,8 +26,12 @@ const TEXT_FIELDS: [string, string, boolean?][] = [
   ["title", "Job Title *"],
   ["company", "Company Name *"],
   ["sub_function", "Sub-function"],
-  ["industry", "Industry"],
-  ["location", "Location"],
+  ["industry", "Industry (sector, e.g. IT Services)"],
+  ["designation", "Designation"],
+  ["location", "Location / Area"],
+  ["city", "City"],
+  ["country", "Country"],
+  ["visa_info", "Work Authorization / Visa Info", true],
   ["experience_required", "Experience Required"],
   ["salary_range", "Salary Range"],
   ["employment_type", "Employment Type"],
@@ -88,6 +93,33 @@ export default function JobEdit() {
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
             {CATEGORIES.map((c) => (
               <Chip key={c} label={c.split(" & ")[0]} selected={form.function === c} onPress={() => set("function", c)} />
+            ))}
+          </ScrollView>
+        </View>
+
+        <View style={{ gap: 8 }}>
+          <Text style={styles.label}>Industry</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+            {INDUSTRIES_WITH_OTHER.map((c) => (
+              <Chip key={c} label={INDUSTRY_SHORT[c] || c} selected={form.industry_category === c} onPress={() => set("industry_category", c)} testID={`jobedit-ind-${c}`} />
+            ))}
+          </ScrollView>
+        </View>
+
+        <View style={{ gap: 8 }}>
+          <Text style={styles.label}>Region</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+            {REGIONS.map((r) => (
+              <Chip key={r} label={r} selected={form.region === r} onPress={() => set("region", r)} testID={`jobedit-region-${r}`} />
+            ))}
+          </ScrollView>
+        </View>
+
+        <View style={{ gap: 8 }}>
+          <Text style={styles.label}>Currency</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+            {CURRENCIES.map((c) => (
+              <Chip key={c} label={c} selected={form.currency === c} onPress={() => set("currency", c)} testID={`jobedit-cur-${c}`} />
             ))}
           </ScrollView>
         </View>

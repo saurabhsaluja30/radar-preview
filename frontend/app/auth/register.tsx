@@ -9,8 +9,9 @@ import { makeStyles, useTheme } from "@/src/theme";
 import { useAuth } from "@/src/auth/AuthContext";
 import { Button, Input, Chip } from "@/src/components/ui";
 import { ScreenHeader } from "@/src/components/Brand";
+import { OpportunityNotice } from "@/src/components/OpportunityNotice";
 import { useToast } from "@/src/components/Toast";
-import { CATEGORIES, EXPERIENCE_RANGES } from "@/src/constants";
+import { INDUSTRIES, INDUSTRIES_WITH_OTHER, INDUSTRY_SHORT, PREF_WORK_MODES, EXPERIENCE_RANGES } from "@/src/constants";
 
 export default function Register() {
   const styles = useStyles();
@@ -26,10 +27,17 @@ export default function Register() {
     mobile: "",
     password: "",
     confirm_password: "",
-    preferred_function: "",
+    industry: "",
+    current_designation: "",
+    current_salary: "",
     preferred_location: "",
+    preferred_work_mode: "",
+    preferred_designation: "",
     preferred_experience: "",
   });
+  const [prefIndustries, setPrefIndustries] = useState<string[]>([]);
+  const toggleInd = (i: string) =>
+    setPrefIndustries((p) => (p.includes(i) ? p.filter((x) => x !== i) : [...p, i]));
   const [consent, setConsent] = useState(false);
   const [loading, setLoading] = useState(false);
   const set = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }));
@@ -37,6 +45,10 @@ export default function Register() {
   const submit = async () => {
     if (!form.full_name || !form.email || !form.mobile || !form.password) {
       toast.show("Please fill all required fields", "error");
+      return;
+    }
+    if (!form.industry || !form.current_designation || !form.current_salary || !form.preferred_location || !form.preferred_work_mode) {
+      toast.show("Complete Industry, Designation, Salary, Preferred Location & Work Mode", "error");
       return;
     }
     if (form.password !== form.confirm_password) {
@@ -49,7 +61,7 @@ export default function Register() {
     }
     setLoading(true);
     try {
-      await register({ ...form, email: form.email.trim(), consent });
+      await register({ ...form, preferred_industries: prefIndustries, email: form.email.trim(), consent });
       toast.show("Account created!", "success");
       router.replace("/(tabs)");
     } catch (e: any) {
@@ -70,6 +82,10 @@ export default function Register() {
         <Text style={styles.title}>Join JobRadar</Text>
         <Text style={styles.sub}>Create your account to discover curated opportunities.</Text>
 
+        <View style={{ marginTop: 16 }}>
+          <OpportunityNotice />
+        </View>
+
         <View style={{ gap: 14, marginTop: 22 }}>
           <Input label="Full Name *" value={form.full_name} onChangeText={(v) => set("full_name", v)} placeholder="Your name" testID="reg-name" />
           <Input label="Email *" value={form.email} onChangeText={(v) => set("email", v)} placeholder="you@example.com" keyboardType="email-address" autoCapitalize="none" testID="reg-email" />
@@ -78,15 +94,40 @@ export default function Register() {
           <Input label="Confirm Password *" value={form.confirm_password} onChangeText={(v) => set("confirm_password", v)} placeholder="Re-enter password" secureTextEntry testID="reg-confirm" />
 
           <View style={{ gap: 8 }}>
-            <Text style={styles.label}>Preferred Function</Text>
+            <Text style={styles.label}>Industry *</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
-              {CATEGORIES.map((c) => (
-                <Chip key={c} label={c.split(" & ")[0]} selected={form.preferred_function === c} onPress={() => set("preferred_function", form.preferred_function === c ? "" : c)} testID={`reg-func-${c}`} />
+              {INDUSTRIES_WITH_OTHER.map((c) => (
+                <Chip key={c} label={INDUSTRY_SHORT[c] || c} selected={form.industry === c} onPress={() => set("industry", c)} testID={`reg-industry-${c}`} />
+              ))}
+            </ScrollView>
+            <Text style={styles.note}>JobRadar currently focuses primarily on the five industries above.</Text>
+          </View>
+
+          <Input label="Current Designation *" value={form.current_designation} onChangeText={(v) => set("current_designation", v)} placeholder="e.g. Senior Accountant" testID="reg-designation" />
+          <Input label="Current Annual CTC *" value={form.current_salary} onChangeText={(v) => set("current_salary", v)} placeholder="e.g. 8 LPA or USD 60,000" testID="reg-salary" />
+
+          <Text style={[styles.label, { fontSize: 15, marginTop: 6 }]}>Your Job Preferences</Text>
+
+          <View style={{ gap: 8 }}>
+            <Text style={styles.label}>Preferred Industry (select multiple)</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+              {INDUSTRIES.map((c) => (
+                <Chip key={c} label={INDUSTRY_SHORT[c] || c} selected={prefIndustries.includes(c)} onPress={() => toggleInd(c)} testID={`reg-pref-ind-${c}`} />
               ))}
             </ScrollView>
           </View>
 
-          <Input label="Preferred Location" value={form.preferred_location} onChangeText={(v) => set("preferred_location", v)} placeholder="e.g. Bengaluru" testID="reg-location" />
+          <Input label="Preferred Designation / Job Title" value={form.preferred_designation} onChangeText={(v) => set("preferred_designation", v)} placeholder="e.g. Finance Manager" testID="reg-pref-designation" />
+          <Input label="Preferred Job Location / Country *" value={form.preferred_location} onChangeText={(v) => set("preferred_location", v)} placeholder="e.g. Bengaluru or Dubai" testID="reg-location" />
+
+          <View style={{ gap: 8 }}>
+            <Text style={styles.label}>Preferred Work Mode *</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+              {PREF_WORK_MODES.map((m) => (
+                <Chip key={m} label={m} selected={form.preferred_work_mode === m} onPress={() => set("preferred_work_mode", m)} testID={`reg-wm-${m}`} />
+              ))}
+            </ScrollView>
+          </View>
 
           <View style={{ gap: 8 }}>
             <Text style={styles.label}>Preferred Experience</Text>
@@ -128,6 +169,7 @@ const useStyles = makeStyles((colors) => ({
   title: { color: colors.onSurface, fontSize: 24, fontWeight: "900" },
   sub: { color: colors.muted, fontSize: 14, marginTop: 6 },
   label: { color: colors.onSurface, fontSize: 13, fontWeight: "700" },
+  note: { color: colors.muted, fontSize: 12, fontStyle: "italic" },
   consent: { flexDirection: "row", gap: 10, alignItems: "flex-start", marginTop: 4 },
   consentTxt: { flex: 1, color: colors.onSurfaceSecondary, fontSize: 13, lineHeight: 19 },
   link: { color: colors.brandPrimary, fontWeight: "800" },

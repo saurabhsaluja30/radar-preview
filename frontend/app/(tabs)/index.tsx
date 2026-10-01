@@ -26,7 +26,7 @@ import { makeStyles, useTheme } from "@/src/theme";
 import { useAuth } from "@/src/auth/AuthContext";
 import { BrandLogo } from "@/src/components/Brand";
 import { Button, Card } from "@/src/components/ui";
-import { CATEGORIES } from "@/src/constants";
+import { CATEGORIES, INDUSTRIES, INDUSTRY_SHORT } from "@/src/constants";
 import { money } from "@/src/utils/format";
 
 const HERO =
@@ -35,11 +35,9 @@ const HERO =
 const CAT_ICON: Record<string, any> = {
   "HR & Recruitment": UsersThree,
   "Finance & Accounting": ChartLineUp,
-  "Operations & Customer Experience": Gear,
-  "Travel & Hospitality": AirplaneTilt,
-  "Sales & Business Development": Handshake,
   "IT & Technology": Code,
-  "Other Professional Roles": Briefcase,
+  "Travel & Hospitality": AirplaneTilt,
+  "BPO / Customer Experience": Gear,
 };
 
 const STEPS = [
@@ -146,22 +144,44 @@ export default function Home() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Job Categories</Text>
           <View style={styles.grid}>
-            {CATEGORIES.map((c) => {
+            {INDUSTRIES.map((c) => {
               const Icon = CAT_ICON[c] || Briefcase;
               return (
                 <Pressable
                   key={c}
                   testID={`category-${c}`}
-                  onPress={() => router.push({ pathname: "/explore", params: { function: c } })}
+                  onPress={() => router.push({ pathname: "/explore", params: { industry_category: c } })}
                   style={styles.catCard}
                 >
                   <View style={styles.catIcon}>
                     <Icon size={24} color={colors.brandPrimary} weight="duotone" />
                   </View>
-                  <Text style={styles.catTxt}>{c}</Text>
+                  <Text style={styles.catTxt}>{INDUSTRY_SHORT[c] || c}</Text>
                 </Pressable>
               );
             })}
+          </View>
+          <View style={[styles.grid, { marginTop: 12 }]}>
+            <Pressable
+              testID="region-india"
+              onPress={() => router.push({ pathname: "/explore", params: { region: "India" } })}
+              style={[styles.catCard, { backgroundColor: colors.surfaceTertiary }]}
+            >
+              <View style={styles.catIcon}>
+                <Briefcase size={24} color={colors.brandPrimary} weight="duotone" />
+              </View>
+              <Text style={styles.catTxt}>India Jobs</Text>
+            </Pressable>
+            <Pressable
+              testID="region-international"
+              onPress={() => router.push({ pathname: "/explore", params: { region: "International" } })}
+              style={[styles.catCard, { backgroundColor: colors.surfaceTertiary }]}
+            >
+              <View style={styles.catIcon}>
+                <AirplaneTilt size={24} color={colors.brandPrimary} weight="duotone" />
+              </View>
+              <Text style={styles.catTxt}>International Jobs</Text>
+            </Pressable>
           </View>
         </View>
 

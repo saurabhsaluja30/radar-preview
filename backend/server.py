@@ -310,7 +310,8 @@ async def compute_membership(candidate_id: str) -> dict:
 # Job serialization
 # ---------------------------------------------------------------------------
 PREVIEW_FIELDS = ["job_id", "title", "company", "function", "sub_function", "industry",
-                  "location", "country", "experience_required", "work_mode", "employment_type",
+                  "industry_category", "designation", "region", "location", "city", "country",
+                  "currency", "visa_info", "experience_required", "work_mode", "employment_type",
                   "date_added", "last_updated", "featured", "status", "application_deadline",
                   "company_logo", "views", "saves"]
 PREMIUM_FIELDS = ["description", "key_responsibilities", "required_skills", "preferred_skills",
@@ -342,6 +343,12 @@ class RegisterReq(BaseModel):
     preferred_function: Optional[str] = None
     preferred_location: Optional[str] = None
     preferred_experience: Optional[str] = None
+    industry: Optional[str] = None
+    current_designation: Optional[str] = None
+    current_salary: Optional[str] = None
+    preferred_industries: Optional[List[str]] = None
+    preferred_designation: Optional[str] = None
+    preferred_work_mode: Optional[str] = None
     consent: bool = False
 
 
@@ -375,6 +382,12 @@ class ProfileReq(BaseModel):
     preferred_function: Optional[str] = None
     preferred_location: Optional[str] = None
     preferred_experience: Optional[str] = None
+    industry: Optional[str] = None
+    current_designation: Optional[str] = None
+    current_salary: Optional[str] = None
+    preferred_industries: Optional[List[str]] = None
+    preferred_designation: Optional[str] = None
+    preferred_work_mode: Optional[str] = None
 
 
 class CheckoutReq(BaseModel):
@@ -387,8 +400,14 @@ class JobReq(BaseModel):
     function: Optional[str] = ""
     sub_function: Optional[str] = ""
     industry: Optional[str] = ""
+    industry_category: Optional[str] = ""
+    designation: Optional[str] = ""
+    region: Optional[str] = "India"
     location: Optional[str] = ""
+    city: Optional[str] = ""
     country: Optional[str] = "India"
+    currency: Optional[str] = "INR"
+    visa_info: Optional[str] = ""
     work_mode: Optional[str] = "Work From Office"
     experience_required: Optional[str] = ""
     salary_range: Optional[str] = ""
@@ -440,6 +459,11 @@ async def register(req: RegisterReq):
         raise HTTPException(status_code=400, detail="Password must be at least 6 characters")
     if not req.consent:
         raise HTTPException(status_code=400, detail="You must accept the Terms and Privacy Policy")
+    for _f, _label in (("industry", "Industry"), ("current_designation", "Current Designation"),
+                       ("current_salary", "Current Salary"), ("preferred_location", "Preferred Job Location"),
+                       ("preferred_work_mode", "Preferred Work Mode")):
+        if not getattr(req, _f):
+            raise HTTPException(status_code=400, detail=f"{_label} is required")
     existing = await db.users.find_one({"email": req.email.lower()})
     if existing:
         raise HTTPException(status_code=400, detail="An account with this email already exists")
@@ -455,6 +479,12 @@ async def register(req: RegisterReq):
         "preferred_function": req.preferred_function,
         "preferred_location": req.preferred_location,
         "preferred_experience": req.preferred_experience,
+        "industry": req.industry,
+        "current_designation": req.current_designation,
+        "current_salary": req.current_salary,
+        "preferred_industries": req.preferred_industries or [],
+        "preferred_designation": req.preferred_designation,
+        "preferred_work_mode": req.preferred_work_mode,
         "consent": req.consent,
         "suspended": False,
         "picture": None,
@@ -613,6 +643,11 @@ async def get_config():
             "Travel & Hospitality", "Sales & Business Development", "IT & Technology",
             "Other Professional Roles",
         ],
+        "industries": [
+            "HR & Recruitment", "Finance & Accounting", "IT & Technology",
+            "Travel & Hospitality", "BPO / Customer Experience",
+        ],
+        "regions": ["India", "International"],
     }
 
 
@@ -631,6 +666,9 @@ async def list_jobs(
     experience: Optional[str] = None,
     work_mode: Optional[str] = None,
     industry: Optional[str] = None,
+    industry_category: Optional[str] = None,
+    region: Optional[str] = None,
+    country: Optional[str] = None,
     featured: Optional[bool] = None,
     sort: str = "newest",
     limit: int = 50,
@@ -644,6 +682,12 @@ async def list_jobs(
         query["work_mode"] = work_mode
     if industry and industry != "All":
         query["industry"] = industry
+    if industry_category and industry_category != "All":
+        query["industry_category"] = industry_category
+    if region and region != "All":
+        query["region"] = region
+    if country and country != "All":
+        query["country"] = {"$regex": re.escape(country), "$options": "i"}
     if experience:
         query["experience_required"] = {"$regex": re.escape(experience), "$options": "i"}
     if featured is not None:
@@ -808,12 +852,24 @@ async def dashboard(user=Depends(get_current_user)):
     smap = {j["job_id"]: j for j in saved_jobs_docs}
     recent = await db.jobs.find({"status": "Published"}, {"_id": 0, "admin_notes": 0, "verification_score": 0}).sort(
         "date_added", -1).limit(6).to_list(6)
-    pref = user.get("preferred_function")
+    pref_inds = user.get("preferred_industries") or []
+    if not pref_inds and user.get("industry"):
+        pref_inds = [user.get("industry")]
     rec_query = {"status": "Published"}
-    if pref:
-        rec_query["function"] = pref
+    if pref_inds:
+        rec_query["industry_category"] = {"$in": pref_inds}
+    wm = user.get("preferred_work_mode")
+    if wm and wm not in ("Any", "All"):
+        rec_query["work_mode"] = wm
     recommended = await db.jobs.find(rec_query, {"_id": 0, "admin_notes": 0, "verification_score": 0}).sort(
-        "featured", -1).limit(6).to_list(6)
+        [("featured", -1), ("date_added", -1)]).limit(8).to_list(8)
+    if not recommended and pref_inds:
+        recommended = await db.jobs.find(
+            {"status": "Published", "industry_category": {"$in": pref_inds}},
+            {"_id": 0, "admin_notes": 0, "verification_score": 0}).limit(8).to_list(8)
+    if not recommended:
+        recommended = await db.jobs.find({"status": "Published"},
+            {"_id": 0, "admin_notes": 0, "verification_score": 0}).sort("featured", -1).limit(6).to_list(6)
     payments = await db.payments.find({"candidate_id": user["user_id"]}, {"_id": 0}).sort("created_at", -1).to_list(20)
     return {
         "user": {"full_name": user.get("full_name"), "email": user.get("email"), "picture": user.get("picture")},
@@ -879,10 +935,18 @@ async def admin_dashboard(admin=Depends(require_admin)):
 
 
 @api.get("/admin/jobs")
-async def admin_list_jobs(admin=Depends(require_admin), q: Optional[str] = None, status: Optional[str] = None):
+async def admin_list_jobs(admin=Depends(require_admin), q: Optional[str] = None, status: Optional[str] = None,
+                          industry_category: Optional[str] = None, region: Optional[str] = None,
+                          country: Optional[str] = None):
     query: dict = {}
     if status and status != "All":
         query["status"] = status
+    if industry_category and industry_category != "All":
+        query["industry_category"] = industry_category
+    if region and region != "All":
+        query["region"] = region
+    if country:
+        query["country"] = {"$regex": re.escape(country), "$options": "i"}
     if q:
         rx = {"$regex": re.escape(q), "$options": "i"}
         query["$or"] = [{"title": rx}, {"company": rx}]
@@ -956,11 +1020,17 @@ async def admin_duplicate_job(job_id: str, admin=Depends(require_admin)):
 
 
 @api.get("/admin/candidates")
-async def admin_candidates(admin=Depends(require_admin), q: Optional[str] = None):
+async def admin_candidates(admin=Depends(require_admin), q: Optional[str] = None, industry: Optional[str] = None):
     query: dict = {"role": "candidate"}
+    conds = []
+    if industry and industry != "All":
+        conds.append({"$or": [{"industry": industry}, {"preferred_industries": industry}]})
     if q:
         rx = {"$regex": re.escape(q), "$options": "i"}
-        query["$or"] = [{"full_name": rx}, {"email": rx}, {"mobile": rx}]
+        conds.append({"$or": [{"full_name": rx}, {"email": rx}, {"mobile": rx},
+                              {"current_designation": rx}, {"preferred_designation": rx}, {"industry": rx}]})
+    if conds:
+        query["$and"] = conds
     users = await db.users.find(query, {"_id": 0, "password": 0}).sort("created_at", -1).to_list(1000)
     out = []
     for u in users:
@@ -1248,14 +1318,73 @@ SAMPLE_JOBS = [
 ]
 
 
+INTL_JOBS = [
+    ("Senior Travel Consultant", "Emirates Holidays", "Travel & Hospitality", "Travel", "Hospitality",
+     "Dubai", "UAE", "AED", "AED 8,000-12,000/mo", "Hybrid", "Visa sponsorship available for eligible candidates."),
+    ("IT Support Engineer", "NorthBridge Tech", "IT & Technology", "IT Support", "Technology",
+     "London", "United Kingdom", "GBP", "GBP 32,000-40,000", "Work From Office", "Requires valid UK work authorization; Skilled Worker visa considered."),
+    ("Finance Analyst", "Summit Capital", "Finance & Accounting", "FP&A", "Financial Services",
+     "Singapore", "Singapore", "SGD", "SGD 60,000-80,000", "Hybrid", "Employment Pass (EP) sponsorship for strong candidates."),
+]
+
+
+async def _seed_international_jobs():
+    if await db.jobs.count_documents({"region": "International"}) > 0:
+        return
+    for i, (title, company, cat, sub, ind, city, country, cur, sal, mode, visa) in enumerate(INTL_JOBS):
+        await db.jobs.insert_one({
+            "job_id": f"job_{uuid.uuid4().hex[:10]}", "title": title, "company": company,
+            "function": cat, "industry_category": cat, "sub_function": sub, "industry": ind,
+            "designation": title, "region": "International", "location": city, "city": city,
+            "country": country, "currency": cur, "work_mode": mode, "experience_required": "3-7 years",
+            "salary_range": sal, "visa_info": visa, "employment_type": "Full-time",
+            "description": (f"{company} is hiring a {title} in {city}, {country}. A curated international "
+                            "opportunity for professionals open to global roles. Apply directly via the employer link."),
+            "key_responsibilities": ("Deliver on core responsibilities for the role.\n"
+                                     "Collaborate across global teams.\nMeet quality and compliance standards."),
+            "required_skills": "Communication, Domain expertise, Cross-cultural collaboration",
+            "preferred_skills": "International experience, Relevant certifications",
+            "recruiter_name": "Global Talent Team", "recruiter_email": "careers@example.com",
+            "application_link": "https://www.linkedin.com/jobs/", "source_link": "https://www.linkedin.com/jobs/",
+            "application_deadline": (now_utc() + timedelta(days=45)).isoformat(),
+            "status": "Published", "featured": i == 0, "verification_score": 80,
+            "admin_notes": "Sample international demo job.", "company_logo": "",
+            "date_added": now_iso(), "last_updated": now_iso(), "views": 0, "saves": 0, "apply_clicks": 0})
+    logger.info("Seeded international demo jobs")
+
+
 async def seed():
+    # --- idempotent, non-destructive migrations for existing data ---
+    await db.plans.update_many({"duration_days": 180}, {"$set": {"price": 699}})
+    await db.plans.update_many({"duration_days": 365}, {"$set": {"price": 999}})
+    await db.plans.update_many({"duration_days": 90}, {"$set": {"price": 499}})
+    await db.jobs.update_many({"region": {"$exists": False}}, {"$set": {"region": "India"}})
+    await db.jobs.update_many({"currency": {"$exists": False}}, {"$set": {"currency": "INR"}})
+    try:
+        await db.jobs.update_many({"$or": [{"city": {"$exists": False}}, {"city": ""}]},
+                                  [{"$set": {"city": "$location"}}])
+    except Exception as e:
+        logger.warning(f"city backfill: {e}")
+    _cat_map = {
+        "HR & Recruitment": "HR & Recruitment",
+        "Finance & Accounting": "Finance & Accounting",
+        "IT & Technology": "IT & Technology",
+        "Travel & Hospitality": "Travel & Hospitality",
+        "Operations & Customer Experience": "BPO / Customer Experience",
+    }
+    for _src, _dst in _cat_map.items():
+        await db.jobs.update_many({"function": _src, "industry_category": {"$exists": False}},
+                                  {"$set": {"industry_category": _dst}})
+    await db.jobs.update_many({"industry_category": {"$exists": False}}, {"$set": {"industry_category": "Other"}})
+    await _seed_international_jobs()
+
     if await db.plans.count_documents({}) == 0:
         base_plans = [
             {"name": "Quarterly Plan", "price": 499, "duration_days": 90, "featured": True,
              "tagline": "Recommended starter"},
-            {"name": "Half-Yearly Plan", "price": 799, "duration_days": 180, "featured": False,
+            {"name": "Half-Yearly Plan", "price": 699, "duration_days": 180, "featured": False,
              "tagline": "Great value"},
-            {"name": "Annual Plan", "price": 1499, "duration_days": 365, "featured": False,
+            {"name": "Annual Plan", "price": 999, "duration_days": 365, "featured": False,
              "tagline": "Best long-term value"},
         ]
         for p in base_plans:
@@ -1269,6 +1398,8 @@ async def seed():
             await db.jobs.insert_one({
                 "job_id": f"job_{uuid.uuid4().hex[:10]}", "title": title, "company": company,
                 "function": func, "sub_function": sub, "industry": ind, "location": loc, "country": "India",
+                "industry_category": _cat_map.get(func, "Other"), "designation": title,
+                "region": "India", "city": loc, "currency": "INR", "visa_info": "",
                 "work_mode": mode, "experience_required": exp, "salary_range": sal,
                 "employment_type": "Full-time",
                 "description": (f"{company} is seeking a {title} to join a high-performing team. "
@@ -1306,7 +1437,10 @@ async def seed():
             "full_name": "Test Candidate", "mobile": "9999999999", "password": hash_pw("Test@12345"),
             "role": "candidate", "auth_provider": "password", "picture": None,
             "preferred_function": "IT & Technology", "preferred_location": "Bengaluru",
-            "preferred_experience": "2-5 years", "consent": True, "suspended": False,
+            "preferred_experience": "2-5 years", "industry": "IT & Technology",
+            "current_designation": "Software Engineer", "current_salary": "12 LPA",
+            "preferred_industries": ["IT & Technology"], "preferred_designation": "Senior Software Engineer",
+            "preferred_work_mode": "Hybrid", "consent": True, "suspended": False,
             "created_at": now_iso(), "updated_at": now_iso(), "status": "active"})
         logger.info("Seeded test candidate")
 

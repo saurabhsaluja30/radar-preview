@@ -7,9 +7,10 @@ import { MagnifyingGlass } from "phosphor-react-native";
 import { api } from "@/src/api/client";
 import { makeStyles, useTheme } from "@/src/theme";
 import { ScreenHeader } from "@/src/components/Brand";
-import { Card, Badge, Button } from "@/src/components/ui";
+import { Card, Badge, Button, Chip } from "@/src/components/ui";
 import { useToast } from "@/src/components/Toast";
 import { formatDate } from "@/src/utils/format";
+import { INDUSTRIES, INDUSTRY_SHORT } from "@/src/constants";
 
 const statusColor = (s: string): any =>
   s === "active" || s === "expiring_soon" ? "success" : s === "no_membership" ? "info" : s === "expiring_soon" ? "warning" : "error";
@@ -21,9 +22,10 @@ export default function AdminCandidates() {
   const toast = useToast();
   const qc = useQueryClient();
   const [q, setQ] = useState("");
+  const [ind, setInd] = useState("All");
   const [open, setOpen] = useState<string | null>(null);
 
-  const { data } = useQuery({ queryKey: ["admin-candidates", q], queryFn: () => api("/admin/candidates", { query: { q } }) });
+  const { data } = useQuery({ queryKey: ["admin-candidates", q, ind], queryFn: () => api("/admin/candidates", { query: { q, industry: ind } }) });
   const candidates: any[] = data?.candidates || [];
 
   const act = async (fn: () => Promise<any>, msg: string) => {
@@ -42,8 +44,14 @@ export default function AdminCandidates() {
       <View style={styles.searchWrap}>
         <View style={styles.search}>
           <MagnifyingGlass size={18} color={colors.muted} />
-          <TextInput value={q} onChangeText={setQ} placeholder="Search name, email, mobile..." placeholderTextColor={colors.muted} style={styles.searchInput} testID="admin-cand-search" />
+          <TextInput value={q} onChangeText={setQ} placeholder="Search name, email, designation..." placeholderTextColor={colors.muted} style={styles.searchInput} testID="admin-cand-search" />
         </View>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingTop: 10 }}>
+          <Chip label="All" selected={ind === "All"} onPress={() => setInd("All")} testID="cand-ind-all" />
+          {INDUSTRIES.map((c) => (
+            <Chip key={c} label={INDUSTRY_SHORT[c] || c} selected={ind === c} onPress={() => setInd(ind === c ? "All" : c)} testID={`cand-ind-${c}`} />
+          ))}
+        </ScrollView>
       </View>
       <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: insets.bottom + 24, gap: 10 }} showsVerticalScrollIndicator={false}>
         <Text style={styles.count}>{candidates.length} candidates</Text>
@@ -63,6 +71,10 @@ export default function AdminCandidates() {
                 <Text style={styles.meta}>Mobile: {c.mobile || "—"}</Text>
                 <Text style={styles.meta}>Plan: {c.plan_name || "—"} · Expiry: {formatDate(c.expiry_date)}</Text>
                 <Text style={styles.meta}>Joined: {formatDate(c.created_at)} · {c.suspended ? "Suspended" : "Active"}</Text>
+                <Text style={styles.meta}>Industry: {c.industry || "Not Provided"}</Text>
+                <Text style={styles.meta}>Current: {c.current_designation || "Not Provided"} · {c.current_salary || "Not Provided"}</Text>
+                <Text style={styles.meta}>Prefers: {(c.preferred_industries || []).join(", ") || "Not Provided"}</Text>
+                <Text style={styles.meta}>Target: {c.preferred_designation || "Not Provided"} · {c.preferred_location || "Not Provided"} · {c.preferred_work_mode || "Any"}</Text>
                 <View style={{ flexDirection: "row", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
                   <Button title="Extend 30 days" size="sm" variant="outline" fullWidth={false} onPress={() => act(() => api(`/admin/candidates/${c.user_id}/extend`, { method: "POST", body: { days: 30 } }), "Extended 30 days")} testID={`cand-extend-${c.email}`} />
                   <Button title={c.suspended ? "Reactivate" : "Suspend"} size="sm" variant={c.suspended ? "secondary" : "danger"} fullWidth={false} onPress={() => act(() => api(`/admin/candidates/${c.user_id}/suspend`, { method: "POST", body: { suspended: !c.suspended } }), c.suspended ? "Reactivated" : "Suspended")} testID={`cand-suspend-${c.email}`} />
