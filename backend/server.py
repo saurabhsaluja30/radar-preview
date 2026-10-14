@@ -1355,9 +1355,9 @@ async def _seed_international_jobs():
 
 async def seed():
     # --- idempotent, non-destructive migrations for existing data ---
-    await db.plans.update_many({"duration_days": 180}, {"$set": {"price": 699}})
+    await db.plans.update_many({"duration_days": 180}, {"$set": {"price": 799}})
     await db.plans.update_many({"duration_days": 365}, {"$set": {"price": 999}})
-    await db.plans.update_many({"duration_days": 90}, {"$set": {"price": 499}})
+    await db.plans.update_many({"duration_days": 90}, {"$set": {"price": 599}})
     await db.jobs.update_many({"region": {"$exists": False}}, {"$set": {"region": "India"}})
     await db.jobs.update_many({"currency": {"$exists": False}}, {"$set": {"currency": "INR"}})
     try:
@@ -1380,9 +1380,9 @@ async def seed():
 
     if await db.plans.count_documents({}) == 0:
         base_plans = [
-            {"name": "Quarterly Plan", "price": 499, "duration_days": 90, "featured": True,
+            {"name": "Quarterly Plan", "price": 599, "duration_days": 90, "featured": True,
              "tagline": "Recommended starter"},
-            {"name": "Half-Yearly Plan", "price": 699, "duration_days": 180, "featured": False,
+            {"name": "Half-Yearly Plan", "price": 799, "duration_days": 180, "featured": False,
              "tagline": "Great value"},
             {"name": "Annual Plan", "price": 999, "duration_days": 365, "featured": False,
              "tagline": "Best long-term value"},

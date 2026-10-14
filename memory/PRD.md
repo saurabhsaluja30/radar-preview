@@ -1,7 +1,7 @@
 # JobRadar by EevolveX — PRD
 
 ## Original Problem Statement
-Build a production-ready, mobile job-discovery **membership** platform for EevolveX Consulting LLP. Candidates register, buy a membership plan (Quarterly ₹499/90d, Half-Yearly ₹799/180d, Annual ₹1499/365d) in DEMO payment mode to unlock curated job details and apply directly to employers via external links. Premium details are gated at the API level for non-members. A separate Admin portal manages jobs, candidates, subscriptions, payments (real vs demo revenue), emails, and a Developer Test Panel. NOT a recruitment marketplace; no employment guarantees. Purple + white EevolveX brand.
+Build a production-ready, mobile job-discovery **membership** platform for EevolveX Consulting LLP. Candidates register, buy a membership plan (Quarterly ₹599/90d, Half-Yearly ₹799/180d, Annual ₹1499/365d) in DEMO payment mode to unlock curated job details and apply directly to employers via external links. Premium details are gated at the API level for non-members. A separate Admin portal manages jobs, candidates, subscriptions, payments (real vs demo revenue), emails, and a Developer Test Panel. NOT a recruitment marketplace; no employment guarantees. Purple + white EevolveX brand.
 
 ## Architecture
 - **Frontend:** Expo Router (React Native), TanStack Query, react-native-keyboard-controller, phosphor-react-native icons, expo-blur (locked overlay), purple theme in `src/theme.ts`.
@@ -23,7 +23,7 @@ Build a production-ready, mobile job-discovery **membership** platform for Eevol
 - Admin: dashboard metrics (real vs demo revenue separated), job CRUD + status/feature/duplicate, candidate mgmt (extend/suspend), subscription mgmt (cancel), payment reports, email logs + announcements, Developer Test Panel (activate 90/180/365, expire now, expiry 7/3/1, reminders 7/3/1, simulate failed/renewal, reset/delete).
 
 ## Update (2026-10-01) — Pricing, Profiles & International Jobs
-- Prices: Quarterly ₹499/90d, Half-Yearly ₹699/180d, Annual ₹999/365d (idempotent startup migration; plans read dynamically everywhere).
+- Prices: Quarterly ₹599/90d, Half-Yearly ₹799/180d, Annual ₹999/365d (idempotent startup migration; plans read dynamically everywhere).
 - Candidate registration/profile now collect Industry (5 + Other), Current Designation, Current Annual CTC, Preferred Job Location, Preferred Work Mode, multi-select Preferred Industries, Preferred Designation. Existing users show "Not Provided" and can edit in Profile.
 - International jobs: jobs carry region (India/International), city, country, currency, visa/work-authorization info; existing jobs backfilled (region=India, industry_category from function); 3 international demo jobs seeded. Candidates filter by region/country/industry; admin filters jobs by region/industry/country and candidates by industry.
 - Job matching: dashboard recommendations use preferred_industries + preferred_work_mode.
