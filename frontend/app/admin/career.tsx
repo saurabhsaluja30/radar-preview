@@ -136,9 +136,10 @@ export default function AdminCareer() {
             </Card>
 
             <Card style={{ gap: 10 }}>
-              <Text style={styles.h}>Usage limits per period</Text>
+              <Text style={styles.h}>Usage limits</Text>
+              <Text style={styles.muted}>Paid plans: total uses included for the whole plan (from purchase until expiry). Free users: uses per period below.</Text>
               <View style={styles.switchRow}>
-                <Text style={styles.p}>Period length (days)</Text>
+                <Text style={styles.p}>Free-user period (days)</Text>
                 <TextInput
                   value={String(s.period_days)}
                   onChangeText={(v) => upd((d) => (d.period_days = v.replace(/\D/g, "")))}

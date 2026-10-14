@@ -1377,6 +1377,10 @@ async def seed():
                                   {"$set": {"industry_category": _dst}})
     await db.jobs.update_many({"industry_category": {"$exists": False}}, {"$set": {"industry_category": "Other"}})
     await _seed_international_jobs()
+    # Career Tools plan limits: Quarterly 15, Half-Yearly 25, Annual 40 (per plan purchase)
+    for _tier, _n in (("quarterly", 15), ("half_yearly", 25), ("annual", 40)):
+        await db.career_settings.update_one({"settings_id": "career"}, {"$set": {
+            f"limits.{_tier}": {"resume_generation": _n, "resume_analysis": _n, "interview_sessions": _n}}})
 
     if await db.plans.count_documents({}) == 0:
         base_plans = [

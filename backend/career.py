@@ -37,9 +37,9 @@ DEFAULT_SETTINGS = {
     },
     "limits": {
         "free": {"resume_generation": 2, "resume_analysis": 2, "interview_sessions": 1},
-        "quarterly": {"resume_generation": 10, "resume_analysis": 10, "interview_sessions": 10},
-        "half_yearly": {"resume_generation": 15, "resume_analysis": 15, "interview_sessions": 15},
-        "annual": {"resume_generation": 25, "resume_analysis": 25, "interview_sessions": 25},
+        "quarterly": {"resume_generation": 15, "resume_analysis": 15, "interview_sessions": 15},
+        "half_yearly": {"resume_generation": 25, "resume_analysis": 25, "interview_sessions": 25},
+        "annual": {"resume_generation": 40, "resume_analysis": 40, "interview_sessions": 40},
     },
     "period_days": 30,
     "addons": [
@@ -189,7 +189,16 @@ def build_router(db, get_current_user, require_admin, compute_membership, now_ut
     async def usage_snapshot(user) -> dict:
         s = await get_settings()
         tier = await get_tier(user)
+        # Paid members: limits apply to the whole plan they purchased (counted from that purchase).
+        # Free users: limits reset every `period_days`.
+        period_label = f"resets every {s.get('period_days', 30)} days"
         since = (now_utc() - timedelta(days=int(s.get("period_days", 30)))).isoformat()
+        if tier != "free":
+            m = await compute_membership(user["user_id"])
+            sub = await db.subscriptions.find_one({"subscription_id": m.get("subscription_id")},
+                                                  {"_id": 0, "created_at": 1})
+            since = (sub or {}).get("created_at") or since
+            period_label = f"for your {m.get('plan_name') or 'plan'} (valid till {(m.get('expiry_date') or '')[:10]})"
         usage = {}
         for k in KINDS:
             used = await db.career_usage.count_documents(
@@ -204,11 +213,13 @@ def build_router(db, get_current_user, require_admin, compute_membership, now_ut
             elif tier == "free" and not cfg.get("free_access", False):
                 reason = "This tool requires an active JobRadar membership."
             elif usage[TOOL_KIND[t]]["remaining"] <= 0:
-                reason = "You have used all your sessions for this period."
+                reason = ("You have used all your sessions for this period." if tier == "free" else
+                          "You have used all sessions included in your plan. Renew or upgrade to continue.")
             tools[t] = {"enabled": cfg.get("enabled", True), "free_access": cfg.get("free_access", False),
                         "accessible": reason is None, "reason": reason}
         u = await db.users.find_one({"user_id": user["user_id"]}, {"_id": 0, "ai_consent": 1})
         return {"tier": tier, "usage": usage, "tools": tools, "period_days": s.get("period_days", 30),
+                "period_label": period_label,
                 "ai_configured": bool(os.environ.get("EMERGENT_LLM_KEY")),
                 "ai_consent": bool((u or {}).get("ai_consent")),
                 "addons": [a for a in s.get("addons", []) if a.get("enabled")],

@@ -54,7 +54,7 @@ export function UsagePill({ tool, usage }: { tool: ToolKey; usage: any }) {
   }
   return (
     <Text style={styles.pill} testID={`usage-${tool}`}>
-      {u?.remaining ?? 0} of {u?.limit ?? 0} {KIND_LABEL[TOOL_KIND[tool]]} left · resets every {usage.period_days} days
+      {u?.remaining ?? 0} of {u?.limit ?? 0} {KIND_LABEL[TOOL_KIND[tool]]} left · {usage.period_label || `resets every ${usage.period_days} days`}
     </Text>
   );
 }
