@@ -48,3 +48,8 @@ See `/app/memory/test_credentials.md` (admin@eevolvex.com / Admin@12345; test@jo
 
 ## Switching DEMO → Razorpay (later)
 Keep the subscription/activation logic (`_activate_subscription`). Replace `/api/checkout/demo` with: create Razorpay order → client pays → verify signature on `/api/payments/verify` (idempotent by order_id) → call `_activate_subscription` with `is_demo=False`. Add webhook endpoint with signature verification. No changes needed to gating, membership computation, or the dashboard revenue split.
+
+## Career Tools (Oct 2026)
+- Backend module `/app/backend/career.py` (router mounted in server.py): resume builder (AI generate/tailor/manual CRUD/versions, PDF+DOCX export via 10-min download tokens), resume analyser (cached by input hash), AI interview coach (questions, per-answer eval or end report, hint, skip, end, history), saved searches, admin settings/stats. Backend-enforced tool access, AI consent, per-tier usage limits (free/quarterly/half_yearly/annual per N-day period), duplicate-request locks, AI call logging with estimated cost.
+- Frontend: /career (hub), /career/resume-builder, /career/resume/[id], /career/analyser, /career/interview, /career/interview/[id], /career/history, /admin/career; dashboard Career Tools cards; job detail "Prepare for Interview"; Explore saved searches.
+- Voice answers not implemented (text-first as allowed).

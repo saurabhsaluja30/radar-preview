@@ -1468,6 +1468,10 @@ async def root():
     return {"message": "JobRadar by Evolveminds API", "status": "ok"}
 
 
+from career import build_router as _build_career_router  # noqa: E402
+
+api.include_router(_build_career_router(db, get_current_user, require_admin, compute_membership,
+                                        now_utc, now_iso, parse_dt))
 app.include_router(api)
 app.add_middleware(
     CORSMiddleware,

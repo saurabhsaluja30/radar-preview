@@ -15,6 +15,7 @@ import {
   ShieldStar,
   CaretRight,
   GoogleLogo,
+  BriefcaseIcon as Briefcase,
 } from "phosphor-react-native";
 
 import { makeStyles, useTheme } from "@/src/theme";
@@ -81,6 +82,7 @@ export default function Account() {
 
   const links = [
     { icon: SquaresFour, label: "Dashboard", to: "/dashboard" },
+    { icon: Briefcase, label: "Career Tools", to: "/career" },
     { icon: CreditCard, label: "Membership & Plans", to: "/membership" },
     { icon: UserGear, label: "Edit Profile", to: "/profile" },
     { icon: Info, label: "About JobRadar", to: "/about" },

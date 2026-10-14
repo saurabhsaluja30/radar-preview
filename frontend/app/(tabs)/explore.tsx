@@ -1,9 +1,10 @@
 import React, { useState } from "react";
 import { FlatList, Pressable, RefreshControl, Text, TextInput, View, ScrollView } from "react-native";
 import { useLocalSearchParams } from "expo-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { MagnifyingGlass, SlidersHorizontal } from "phosphor-react-native";
+import { MagnifyingGlass, SlidersHorizontal, BookmarkSimpleIcon, XIcon } from "phosphor-react-native";
+import { useToast } from "@/src/components/Toast";
 
 import { api } from "@/src/api/client";
 import { makeStyles, useTheme } from "@/src/theme";
@@ -35,6 +36,46 @@ export default function Explore() {
   });
 
   const jobs: Job[] = data?.jobs || [];
+
+  const toast = useToast();
+  const qc = useQueryClient();
+  const savedQ = useQuery({
+    queryKey: ["saved-searches", user?.user_id],
+    queryFn: () => api("/saved-searches"),
+    enabled: !!user,
+  });
+  const savedSearches: any[] = savedQ.data?.searches || [];
+  const hasFilters = !!q.trim() || cat !== "All" || region !== "All" || mode !== "All";
+
+  const saveSearch = async () => {
+    const name =
+      [q.trim() && `“${q.trim()}”`, cat !== "All" && (INDUSTRY_SHORT[cat] || cat), region !== "All" && region, mode !== "All" && mode]
+        .filter(Boolean)
+        .join(" · ") || "My search";
+    try {
+      await api("/saved-searches", {
+        method: "POST",
+        body: { name, filters: { q: q.trim(), industry_category: cat, region, work_mode: mode, sort } },
+      });
+      qc.invalidateQueries({ queryKey: ["saved-searches"] });
+      toast.show("Search saved", "success");
+    } catch (e: any) {
+      toast.show(e.message || "Could not save search", "error");
+    }
+  };
+
+  const applySearch = (f: Record<string, string>) => {
+    setQ(f.q || "");
+    setCat(f.industry_category || "All");
+    setRegion(f.region || "All");
+    setMode(f.work_mode || "All");
+    setSort((f.sort as any) || "newest");
+  };
+
+  const removeSearch = async (id: string) => {
+    await api(`/saved-searches/${id}`, { method: "DELETE" }).catch(() => {});
+    qc.invalidateQueries({ queryKey: ["saved-searches"] });
+  };
 
   const Header = (
     <View style={[styles.header, { paddingTop: insets.top + 10 }]}>
@@ -110,6 +151,32 @@ export default function Explore() {
           <Text style={styles.sortTxt}>{sort === "newest" ? "Newest" : "Relevance"}</Text>
         </Pressable>
       </ScrollView>
+      {user && (savedSearches.length > 0 || hasFilters) ? (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.chipRow}
+          style={{ marginTop: 8 }}
+          testID="saved-searches-row"
+        >
+          {hasFilters ? (
+            <Pressable onPress={saveSearch} style={styles.sortBtn} testID="save-search-btn">
+              <BookmarkSimpleIcon size={15} color={colors.brandPrimary} />
+              <Text style={styles.sortTxt}>Save search</Text>
+            </Pressable>
+          ) : null}
+          {savedSearches.map((s) => (
+            <View key={s.search_id} style={styles.savedChip}>
+              <Pressable onPress={() => applySearch(s.filters)} testID={`saved-search-${s.search_id}`}>
+                <Text style={styles.savedTxt}>{s.name}</Text>
+              </Pressable>
+              <Pressable onPress={() => removeSearch(s.search_id)} hitSlop={8} testID={`saved-search-del-${s.search_id}`}>
+                <XIcon size={13} color={colors.onSurfaceTertiary} />
+              </Pressable>
+            </View>
+          ))}
+        </ScrollView>
+      ) : null}
     </View>
   );
 
@@ -181,4 +248,15 @@ const useStyles = makeStyles((colors) => ({
     backgroundColor: colors.surface,
   },
   sortTxt: { color: colors.brandPrimary, fontSize: 13, fontWeight: "700" },
+  savedChip: {
+    flexShrink: 0,
+    height: 36,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingHorizontal: 14,
+    borderRadius: 999,
+    backgroundColor: colors.surfaceTertiary,
+  },
+  savedTxt: { color: colors.onSurfaceTertiary, fontSize: 13, fontWeight: "700" },
 }));

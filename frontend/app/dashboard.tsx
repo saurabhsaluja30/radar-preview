@@ -12,6 +12,7 @@ import { Button, Card, Badge, SectionTitle } from "@/src/components/ui";
 import { ScreenHeader } from "@/src/components/Brand";
 import { MembershipCard } from "@/src/components/MembershipCard";
 import { money, formatDate } from "@/src/utils/format";
+import { CareerToolsCards } from "@/src/components/career";
 
 export default function Dashboard() {
   const styles = useStyles();
@@ -65,6 +66,11 @@ export default function Dashboard() {
 
         <View style={{ paddingHorizontal: 16 }}>
           <MembershipCard membership={membership} onRenew={() => router.push("/plans")} />
+        </View>
+
+        <View style={styles.block} testID="dashboard-career-tools">
+          <SectionTitle title="Career Tools" action="Open" onAction={() => router.push("/career")} />
+          <CareerToolsCards />
         </View>
 
         {recommended.length > 0 && (

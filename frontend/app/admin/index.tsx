@@ -103,6 +103,7 @@ function AdminDashboard() {
     { icon: CreditCard, label: "Subscriptions", to: "/admin/subscriptions" },
     { icon: Receipt, label: "Payments", to: "/admin/payments" },
     { icon: EnvelopeSimple, label: "Email Logs", to: "/admin/emails" },
+    { icon: Briefcase, label: "Career Tools", to: "/admin/career" },
   ];
 
   return (

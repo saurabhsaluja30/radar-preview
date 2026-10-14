@@ -99,7 +99,7 @@ export default function JobDetail() {
           </Pressable>
         }
       />
-      <ScrollView contentContainerStyle={{ paddingBottom: insets.bottom + 120 }} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={{ paddingBottom: insets.bottom + 170 }} showsVerticalScrollIndicator={false}>
         {/* Hero */}
         <View style={styles.hero}>
           <View style={styles.logo}>
@@ -235,6 +235,15 @@ export default function JobDetail() {
         ) : (
           <Button title="View Membership Plans" onPress={() => router.push("/plans")} testID="job-plans-btn" />
         )}
+        {job ? (
+          <Button
+            title="Prepare for Interview"
+            variant="ghost"
+            size="sm"
+            onPress={() => router.push(user ? (`/career/interview?jobId=${id}` as any) : "/auth/login")}
+            testID="job-prepare-interview-btn"
+          />
+        ) : null}
       </View>
     </View>
   );

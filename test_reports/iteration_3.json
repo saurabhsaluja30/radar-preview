@@ -1,0 +1,45 @@
+{
+  "summary": "Iteration 3 — Career Tools + Saved Searches comprehensive validation. BACKEND: 36/36 pytest tests PASSED (120s, serial -n 0) in /app/backend/tests/test_career.py against the public EXPO_PUBLIC_BACKEND_URL. Covered: GET /api/career/usage shape (tier, usage, tools, period_days, ai_configured, ai_consent, disclaimer, addons), 428 on AI endpoints before consent (fresh candidate), POST /api/career/consent toggles ai_consent=true. Resumes: validation (bad type/short answers/missing name → 400); POST /api/career/resumes/generate for both 'fresher' and 'experienced' — AI returned standard ATS headings (SUMMARY/SKILLS/EDUCATION etc.), used only user-supplied employer 'Acme' and did NOT invent Google/Microsoft/Amazon/TCS/Wipro; GET list + GET one + PUT update (added custom section persisted) + duplicate (title '(Copy)') + manual POST + DELETE (404 after). Downloads: /download-link returns /api/career/download/<token>; both PDF (starts %PDF, content-type application/pdf) and DOCX (starts PK, content-type application/vnd.openxml...) return valid binary >500B; invalid token → 404; format=txt → 400. Tailor: short JD → 400; valid JD creates ai_tailor resume titled '— tailored'. Analyser: short resume/JD → 400; valid returns full shape (match_score 0–100, score_explanation, matching_skills, missing_skills with status missing/unclear, experience_match, keyword_analysis, ats_check, suggestions); re-submitting IDENTICAL input returns reused=true and does NOT consume usage; list excludes resume_text/jd_text; GET/DELETE work; /analyses/{id}/improve creates ai_improve resume, second call returns reused=true. Interview coach: validation (missing title / short JD / invalid experience_level → 400); POST /interviews creates in_progress session with 5 questions; /answer (short → 400, valid → per-answer feedback with score, dimensions, did_well, missing, how_to_improve, stronger_structure as EXAMPLE); /hint returns 2–3 sentence hint; /skip marks skipped; /end produces status=completed + report (overall_score, summary, strengths, areas_for_improvement, disclaimer); cannot answer after end (400); list excludes jd_text/questions/report. Authorization: another fresh candidate GET resume/analysis/interview owned by other user → 404 for all three. Admin: candidate hitting /admin/career/settings|stats → 403; stats shape (usage, unique_users, saved_resumes/_analyses/_interview_sessions/_completed_interviews, ai total_calls/failed_calls/tokens/est_cost_usd/by_purpose/model, recent_failures) OK; recent_failures contain no resume_text/answer. Limits enforced: setting limits.free.resume_analysis=0 → 403 for fresh consented free candidate (restored); tools.resume_analyser.enabled=false → 403 (restored); tools.resume_analyser.free_access=false → 403 for free candidate (restored). Saved searches: GET list, POST creates with name+filters (empty filters/all → 400), DELETE works. Regression: /api/plans unchanged (499/699/999 at 90/180/365d) and /api/jobs still returns jobs. FRONTEND (mobile 390x844, candidate test@jobradar.com, active quarterly): /dashboard renders 'Career Tools' block with 3 cards (resume_builder, resume_analyser, interview_coach) each showing usage pill (e.g. '5 of 10 AI resume generations left · resets every 30 days') and 'Start Now' — clicking resume_analyser navigates to /career/analyser which shows Box 1 & Box 2 textareas, Analyse Resume button and AI disclaimer. /career hub shows 'Your access level: Member (quarterly)' plus the 3 cards and ai-disclaimer. /career/history renders 3 Chip tabs (hist-tab-resumes/analyses/interviews). /career/interview exposes all setup controls (iv-title, iv-company, iv-jd, iv-experience_level-*, iv-interview_type-*, iv-difficulty-*, iv-num_questions-5/10/15, iv-fb-each/end, iv-start, usage-interview_coach, ai-disclaimer). Job detail (/job/{id}) exposes job-prepare-interview-btn — clicking it navigates to /career/interview?jobId=... and prefills iv-title='QA Admin Intl Job' + iv-jd (108 chars). Explore: with a region chip selected hasFilters=true and save-search-btn renders; saving creates chip; applying the chip refetches jobs; delete removes chip (saved-search-del-{id}). AI consent card not shown for already-consented test candidate (expected). Deprecated 'shadow*' RN-web warnings persist (non-blocking, carried over from Iter 2). AI calls were real; approximate budget used: 2 resume_generation + 1 tailor + 1 analyse + 1 improve + 1 interview-session (5 questions, 1 answer, 1 hint, 1 end-report).",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "GET /api/admin/career/stats", "issue": "`by_purpose` map includes all historical AI purposes and `recent_failures[].error` can be fairly verbose model exception strings; verified they don't leak user content (no resume/answer text) but main agent may want to redact to just class/message prefix."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [
+      {"flow": "First page load after login (dashboard/career)", "issue": "Transient 401 responses observed on first navigation (same as iter-2) when AuthContext token hasn't hydrated into api client — queries succeed on retry. Not user-visible but adds console noise.", "affected_testIDs": []}
+    ],
+    "design_issues": [],
+    "react_native_issues": [
+      {"component": "Global styles", "issue": "'shadow*' style props still deprecated on react-native-web; recommend migrating to boxShadow / Platform.select to silence warnings. Reference: multiple files via makeStyles."}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_career.py",
+    "/app/backend/tests/test_jobradar.py",
+    "/app/test_reports/pytest/career_results.xml"
+  ],
+  "action_items": [
+    "(Optional) Admin stats: redact `recent_failures[].error` to class name + short message to minimise log noise exposure.",
+    "(Optional) Reduce transient 401 on first navigation by gating react-query calls on authReady/token (same note as iter-2).",
+    "(Optional, non-blocking) Migrate deprecated shadow* styles to boxShadow for RN-web."
+  ],
+  "critical_code_review_comments": [
+    "career.py is 884 lines — single-file module is still manageable but close to the 700-line split threshold; consider splitting into career/resumes.py, career/analyser.py, career/interview.py, career/admin.py if growth continues.",
+    "In-memory `_inflight` lock set (career.py L59, L215-225) is per-process; works for the single preview worker but will not protect against duplicates across horizontally-scaled replicas — fine for current demo deployment.",
+    "ai_json swallows all exceptions into a generic 502. Logs via logger.warning capture type+200 chars which is good; just note that stats endpoint exposes a slightly longer string (see minor issue).",
+    "No cleanup of expired download_tokens records (TTL index could help) — rows accumulate; non-blocking.",
+    "`improve` endpoint re-uses stored improved_resume_id only if the resume still exists — if the user deletes the improved resume, a new one is created on next call. Correct behaviour."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_career.py (NEW — 36 tests covering Career Tools + saved searches + regression; AI budget: 2 resume gens, 1 tailor, 1 analyse+improve, 1 interview session)"
+  ],
+  "success_rate": {"backend": "100% (36/36 in test_career.py; also prior 27/27 regression still green per iter-2)", "frontend": "100% of flows exercised passed (dashboard cards, usage pills, Start Now nav, /career hub tier, /career/analyser screen, /career/resume-builder entry, /career/history 3 tabs, /career/interview setup controls, job-prepare-interview prefill, Explore save/apply/delete saved search)"},
+  "seed_data_creation": "Pytest run created several TEST_* candidates on @jobradar.io and left two 'Improved — …' resumes under test@jobradar.com (created by the improve endpoint; not tracked by cleanup). All resume/analysis/interview docs tracked by _resume_ids/_analysis_id/_sess were deleted in the final cleanup test. Admin career settings were temporarily toggled (limit=0, tool disabled, free_access=false) but RESTORED to DEFAULT_SETTINGS_BODY (free 2/2/1, quarterly 10, half 15, annual 25, all enabled, free_access true, period_days 30) in each test's finally block.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Use `python -m pytest backend/tests/test_career.py -v -n 0` (serial) because xdist loadscope would still work but AI endpoints are rate-sensitive. Budget AI calls carefully — the full suite takes ~2 minutes with real Claude calls. test@jobradar.com has an active quarterly demo membership and ai_consent=true — use `fresh_cand` fixture for consent/limit/isolation tests. The admin-settings tests DO flip settings; they always restore. Any 'Improved — …' resumes under test@jobradar.com are leftover test seed and can be deleted via /career/history → delete, or via DELETE /api/career/data.",
+  "rca_of_issue": "n/a — no blocking issues found in this iteration."
+}
