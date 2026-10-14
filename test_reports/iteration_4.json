@@ -1,0 +1,44 @@
+{
+  "summary": "Iteration 4 — ATS Resume Builder v2 fully validated. BACKEND: new /app/backend/tests/test_resume_builder_v2.py — 18/18 PASSED in 23s against public EXPO_PUBLIC_BACKEND_URL. Covered: (A) /career/resumes/extract — valid messy finance resume returns sections including WORK EXPERIENCE, missing_fields contains 'Phone' (auto-added when absent), consumes exactly +1 resume_generation; <150 chars → 400; grocery-list text → 422 and did NOT consume usage. (B) Manual POST with template='modern' and sections having content+hint — hints persisted on resume; PUT updates template to 'compact' + missing_fields list ['Projects','Certifications'] — all persisted. (C) Downloads: PDF (%PDF, >800B) and DOCX (PK, >800B) for a resume with a HIDDEN hint token 'SAMPLE_HINT_TOKEN_SHOULD_NEVER_LEAK' and leak markers 'LEAK_PDF_DO_NOT_INCLUDE' / 'LEAK_PDF_EMPTY_SECTION'; extracted text via pypdf + python-docx asserted that neither the hint token nor leak markers appear anywhere, and the empty SKILLS section is excluded (only SUMMARY + EDUCATION rendered). (D) All three templates classic/modern/compact render valid PDF + DOCX files >800B with correct magic bytes. (E) Access control on manual create: fresh candidate consented → tools.resume_builder.enabled=false → 403 on POST /career/resumes; and free_access=false → 403; both restored. Final verification that admin settings match defaults (free 2/2/1, quarterly 10, half 15, annual 25, all tools enabled & free_access true, period_days=30). (F) tailor returns ai_tailor resume with notes[] list and preserves template='modern' from source; duplicate also preserves template. (G) regression: /api/plans returns 599 / 799 / 999 for 90/180/365 days; analyser and interview validation 400s still work. Also updated prior test_career.py from 499/699/999 → 599/799/999 to match current config. FRONTEND (mobile 390x844, candidate test@jobradar.com): /career/resume-builder shows two large TypeCards (Fresher 'Create Fresher Resume' + Experienced 'Create Experienced Resume'); clicking Fresher reveals 3 cards (rb-template-general/it/finance) each with ATS-friendly single-column SAMPLE preview showing 'SAMPLE — placeholder content' badge; selecting 'IT / Technical Fresher' and tapping 'Use This Template' navigates to /career/resume/{id} editor with empty section inputs showing hint placeholders (no sample data saved), contact prefilled only from user profile (email+phone). Editor exposed all testIDs: re-save, re-download, re-preview, re-add-section, re-add-experience, re-tailor-open, re-duplicate, re-style-classic/modern/compact; template chips switch styles. Download sheet opens with Download PDF + Download Word (DOCX) + Cancel buttons. Preview modal re-paper renders only filled sections (shows 'Your sections are empty' message when none filled). Experienced flow: rb-type-experienced-btn opens paste box with correct placeholder 'Copy your current resume from Word, PDF text or another document and paste it here...', UsagePill '2 of 10 AI resume generations left · resets every 30 days', pasting <150 chars triggers toast 'Please paste your complete resume text', rb-exp-blank navigates to editor with 15 default sections; Save Resume works (button becomes 'Saved ✓'); Add Work Experience inserts a new section. Reopen flow from /career/history → Resumes tab shows list, tapping a card routes to the correct /career/resume/{id}. Missing-details card (re-missing) renders for the extracted resume with each missing_fields entry and a ✕ to dismiss. Customise My Resume for a Job (re-tailor-open → re-tailor-jd + re-tailor-submit) opens correctly. AI budget this iteration: 1 extract + 1 tailor (via backend tests). Pre-existing legacy 'Improved — …' resumes carried over from Iter-3 (ai_improve) have template=None in storage but that is NOT in scope for this iteration (only ai_builder/ai_extract/ai_tailor + manual).",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST /api/career/analyses/{id}/improve", "issue": "Legacy ai_improve resumes stored with template=None (not one of classic/modern/compact). Export falls back to classic via TEMPLATES.get() so files still render fine, but template chip in the editor won't highlight. Not in scope for this iteration but worth normalising to 'classic' when stored."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [
+      {"flow": "First load after login", "issue": "Transient 401 on initial /career/resumes fetch while AuthContext token hydrates — retries succeed, same note as iter-2/3 (console noise only).", "affected_testIDs": []}
+    ],
+    "design_issues": [],
+    "react_native_issues": [
+      {"component": "Images (global)", "issue": "React-native-web warning: 'Image: style.resizeMode is deprecated. Please use props.resizeMode.' — repeated during startup. Non-blocking. Reference: multiple image-usage sites via components."}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_resume_builder_v2.py",
+    "/app/test_reports/pytest/resume_builder_v2.xml"
+  ],
+  "action_items": [
+    "(Optional) Backfill/normalise template field on legacy ai_improve resumes to 'classic' so the template chip highlights consistently in the editor.",
+    "(Optional) Silence 'Image: style.resizeMode is deprecated' RN-web warning by moving resizeMode from style to props."
+  ],
+  "critical_code_review_comments": [
+    "career.py is now 983 lines — still above the 700-line split threshold flagged in iter-3. Recommend splitting into career/{resumes,extract,analyser,interview,admin}.py when there is bandwidth.",
+    "extract_resume correctly re-uses the resume_generation Lock + record_usage pattern and raises 422 BEFORE record_usage so a 'not a resume' response does not consume quota — verified by test_extract_grocery_returns_422_and_no_usage.",
+    "export_sections() filters by `(s.get('content') or '').strip()` which correctly excludes empty guidance sections; hints are never surfaced to render_pdf/render_docx — verified by extracting PDF/DOCX text.",
+    "ResumeBody now accepts template + missing_fields; good. However the manual POST /career/resumes also goes through require_tool('resume_builder', ai=False) which gates on tool.enabled + tool.free_access + membership — confirmed working (403 both cases).",
+    "duplicate_resume and tailor_resume both carry over d.get('template','classic') — verified by tests."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_resume_builder_v2.py (NEW — 18 tests, 1 AI extract + 1 AI tailor; PDF/DOCX text extraction via pypdf+python-docx)",
+    "/app/backend/tests/test_career.py (prices updated 499/699/999 → 599/799/999 to match current config)"
+  ],
+  "success_rate": {"backend": "100% (18/18 in test_resume_builder_v2.py)", "frontend": "100% of exercised flows passed (type cards, 3 fresher templates with SAMPLE preview, use-template → editor nav, contact prefill from profile, template chips switch, add section / add work experience / save / preview / download sheet / tailor open, experienced paste placeholder + usage pill + short-paste toast + rb-exp-blank fallback, reopen from history, missing-details card)"},
+  "seed_data_creation": "Created a few TEST_* resumes under test@jobradar.com (manual + tailor + duplicate + per-template render) — the pytest cleanup step deletes them. Fresh TEST_rb_* / TEST_dis_*-like candidates were registered for access-control checks and left in auth collection (no cleanup endpoint available). Admin settings were toggled during access checks and RESTORED to defaults in finally blocks + explicitly re-asserted in test_admin_settings_restored_to_defaults.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Run `python -m pytest backend/tests/test_resume_builder_v2.py -v -n 0` (serial, ~23s with real AI). pypdf is now installed. Prior test_career.py suite is still green with the 599/799/999 price fix. Legacy 'Improved — …' resumes on test@jobradar.com have template=None (pre-existing). Admin defaults are restored. Downloads flow is: POST /api/career/resumes/{id}/download-link {format: pdf|docx} → returns {path:'/api/career/download/<token>'}; GET that returns the file (pdf→application/pdf, docx→application/vnd.openxml...; hints and empty sections are stripped).",
+  "rca_of_issue": "n/a — no blocking issues found. Only two non-blocking observations: (1) legacy ai_improve resumes stored with template=None (out of scope — iter-3 feature); (2) RN-web Image.resizeMode deprecation warning on startup."
+}

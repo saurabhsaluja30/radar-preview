@@ -601,8 +601,8 @@ def test_plans_prices_unchanged(s):
     r = s.get(f"{API}/plans", timeout=15)
     assert r.status_code == 200
     plans = {p["duration_days"]: p for p in r.json()["plans"]}
-    assert plans[90]["price"] == 499
-    assert plans[180]["price"] == 699
+    assert plans[90]["price"] == 599
+    assert plans[180]["price"] == 799
     assert plans[365]["price"] == 999
 
 

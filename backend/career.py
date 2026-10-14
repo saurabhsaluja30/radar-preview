@@ -56,6 +56,16 @@ NO_INVENT = ("STRICT RULE: Never invent, assume or exaggerate experience, employ
              "certifications, skills, metrics or achievements. Use only facts the candidate provided. You may "
              "rephrase for clarity and professionalism. If something important is missing, leave it out.")
 
+# Visual templates — all single-column, standard headings, selectable text (ATS-friendly).
+TEMPLATES = {
+    "classic": {"docx_font": "Calibri", "pdf_font": ("Helvetica-Bold", "Helvetica"), "name": 18, "head": 11.5,
+                "body": 11, "color": "", "rule": False},
+    "modern": {"docx_font": "Arial", "pdf_font": ("Helvetica-Bold", "Helvetica"), "name": 20, "head": 11.5,
+               "body": 10.5, "color": "#1F3A5F", "rule": True},
+    "compact": {"docx_font": "Georgia", "pdf_font": ("Times-Bold", "Times-Roman"), "name": 16, "head": 11,
+                "body": 10.5, "color": "", "rule": True},
+}
+
 _inflight: set = set()
 
 
@@ -67,6 +77,7 @@ class Personal(BaseModel):
     email: str = ""
     phone: str = ""
     location: str = ""
+    preferred_location: str = ""
     linkedin: str = ""
 
 
@@ -74,6 +85,7 @@ class Section(BaseModel):
     id: Optional[str] = None
     title: str = Field("", max_length=80)
     content: str = Field("", max_length=8000)
+    hint: Optional[str] = Field("", max_length=600)
 
 
 class ResumeGenerateReq(BaseModel):
@@ -89,6 +101,13 @@ class ResumeSaveReq(BaseModel):
     personal: Personal
     sections: List[Section]
     target_job: Optional[str] = ""
+    template: Optional[str] = "classic"
+    missing_fields: Optional[List[str]] = None
+
+
+class ExtractReq(BaseModel):
+    resume_text: str
+    title: Optional[str] = None
 
 
 class TailorReq(BaseModel):
@@ -195,10 +214,17 @@ def build_router(db, get_current_user, require_admin, compute_membership, now_ut
                 "addons": [a for a in s.get("addons", []) if a.get("enabled")],
                 "disclaimer": AI_DISCLAIMER}
 
-    async def require_tool(user, tool: str):
+    async def require_tool(user, tool: str, ai: bool = True):
         if user.get("role") != "candidate":
             raise HTTPException(403, "Career Tools are available to candidate accounts only")
         snap = await usage_snapshot(user)
+        if not ai:
+            cfg = snap["tools"][tool]
+            if not cfg["enabled"]:
+                raise HTTPException(403, "This tool is temporarily unavailable.")
+            if snap["tier"] == "free" and not cfg["free_access"]:
+                raise HTTPException(403, "This tool requires an active JobRadar membership.")
+            return snap
         if not snap["ai_configured"]:
             raise HTTPException(503, "AI provider is not configured on the server. Please contact support.")
         if not snap["ai_consent"]:
@@ -272,9 +298,10 @@ def build_router(db, get_current_user, require_admin, compute_membership, now_ut
             content = (s.get("content") if isinstance(s, dict) else s.content) or ""
             if isinstance(content, list):
                 content = "\n".join(f"- {c}" for c in content)
-            if title or content.strip():
+            hint = (s.get("hint") if isinstance(s, dict) else s.hint) or ""
+            if title or str(content).strip():
                 out.append({"id": (s.get("id") if isinstance(s, dict) else s.id) or uuid.uuid4().hex[:8],
-                            "title": title, "content": str(content).strip()[:8000]})
+                            "title": title, "content": str(content).strip()[:8000], "hint": _clean(hint, 600)})
         return out
 
     async def own(coll, id_field, item_id, user):
@@ -283,8 +310,10 @@ def build_router(db, get_current_user, require_admin, compute_membership, now_ut
             raise HTTPException(404, "Not found")
         return doc
 
-    async def save_resume(user, title, rtype, personal, sections, target_job="", source=None) -> dict:
-        doc = {"resume_id": f"res_{uuid.uuid4().hex[:12]}", "user_id": user["user_id"],
+    async def save_resume(user, title, rtype, personal, sections, target_job="", source=None,
+                          template="classic", missing_fields=None, notes=None) -> dict:
+        doc = {"template": template if template in TEMPLATES else "classic",
+               "missing_fields": missing_fields or [], "notes": notes or [],"resume_id": f"res_{uuid.uuid4().hex[:12]}", "user_id": user["user_id"],
                "title": _clean(title, 100) or "My Resume", "resume_type": rtype,
                "personal": personal, "sections": norm_sections(sections), "target_job": _clean(target_job, 120),
                "source": source, "created_at": now_iso(), "updated_at": now_iso()}
@@ -321,8 +350,9 @@ def build_router(db, get_current_user, require_admin, compute_membership, now_ut
 
     @r.post("/career/resumes")
     async def create_resume(req: ResumeSaveReq, user=Depends(get_current_user)):
+        await require_tool(user, "resume_builder", ai=False)
         doc = await save_resume(user, req.title, req.resume_type, req.personal.dict(), req.sections, req.target_job,
-                                "manual")
+                                "manual", req.template, req.missing_fields)
         return {"resume": doc}
 
     @r.put("/career/resumes/{resume_id}")
@@ -331,7 +361,9 @@ def build_router(db, get_current_user, require_admin, compute_membership, now_ut
         await db.resumes.update_one({"resume_id": resume_id, "user_id": user["user_id"]}, {"$set": {
             "title": _clean(req.title, 100) or "My Resume", "resume_type": req.resume_type,
             "personal": req.personal.dict(), "sections": norm_sections(req.sections),
-            "target_job": _clean(req.target_job, 120), "updated_at": now_iso()}})
+            "target_job": _clean(req.target_job, 120), "updated_at": now_iso(),
+            "template": req.template if req.template in TEMPLATES else "classic",
+            "missing_fields": [_clean(m, 80) for m in (req.missing_fields or [])][:20]}})
         return {"resume": await own("resumes", "resume_id", resume_id, user)}
 
     @r.delete("/career/resumes/{resume_id}")
@@ -345,7 +377,8 @@ def build_router(db, get_current_user, require_admin, compute_membership, now_ut
     async def duplicate_resume(resume_id: str, user=Depends(get_current_user)):
         d = await own("resumes", "resume_id", resume_id, user)
         doc = await save_resume(user, f"{d['title']} (Copy)"[:100], d["resume_type"], d["personal"], d["sections"],
-                                d.get("target_job", ""), "duplicate")
+                                d.get("target_job", ""), "duplicate", d.get("template", "classic"),
+                                d.get("missing_fields"))
         return {"resume": doc}
 
     @r.post("/career/resumes/generate")
@@ -370,6 +403,37 @@ def build_router(db, get_current_user, require_admin, compute_membership, now_ut
             await record_usage(user, "resume_generation", doc["resume_id"])
         return {"resume": doc}
 
+    @r.post("/career/resumes/extract")
+    async def extract_resume(req: ExtractReq, user=Depends(get_current_user)):
+        text = _clean(req.resume_text, 15000)
+        if len(text) < 150:
+            raise HTTPException(400, "Please paste your complete resume (at least 150 characters) so we can read it")
+        await require_tool(user, "resume_builder")
+        with Lock(user, "resume_generation"):
+            data = await ai_json(user, "resume_extract",
+                                 "You are an expert resume parser and ATS resume writer. " + NO_INVENT +
+                                 " Text may be badly formatted (copied from PDF/Word); reconstruct it carefully.",
+                                 'Extract and organise this pasted resume. Return JSON: {"is_resume":true|false,'
+                                 '"personal":{"full_name":"","email":"","phone":"","location":"","linkedin":""},'
+                                 '"missing_fields":["only important items that are missing or unclear, e.g. '
+                                 '\'Phone number\', \'Employment dates for <Company>\', \'Education year\'"],'
+                                 f'{RESUME_SCHEMA[1:]} Use "WORK EXPERIENCE" as the experience heading and keep '
+                                 'every role (Job Title | Company | Start – End, then "- " bullets) in it. '
+                                 'Use conventional dates like "Jan 2021 – Present". Leave a field empty rather '
+                                 'than guessing.\n\nPASTED RESUME:\n' + text, 5000)
+            if data.get("is_resume") is False or not data.get("sections"):
+                raise HTTPException(422, "We couldn't recognise a resume in the pasted text. Please paste the full "
+                                         "text of your resume (name, experience, education, skills) and try again.")
+            pers = {k: _clean((data.get("personal") or {}).get(k), 120) for k in Personal.__fields__}
+            missing = [_clean(m, 80) for m in (data.get("missing_fields") or []) if isinstance(m, str)][:15]
+            for k, label in (("full_name", "Full name"), ("email", "Email"), ("phone", "Phone number")):
+                if not pers.get(k) and label not in missing:
+                    missing.insert(0, label)
+            doc = await save_resume(user, req.title or "Experienced Resume", "experienced", pers,
+                                    data.get("sections"), "", "ai_extract", "classic", missing)
+            await record_usage(user, "resume_generation", doc["resume_id"])
+        return {"resume": doc}
+
     @r.post("/career/resumes/{resume_id}/tailor")
     async def tailor_resume(resume_id: str, req: TailorReq, user=Depends(get_current_user)):
         jd = _clean(req.jd_text, 12000)
@@ -382,35 +446,64 @@ def build_router(db, get_current_user, require_admin, compute_membership, now_ut
                                  "You are an expert ATS resume writer. " + NO_INVENT +
                                  " Tailor wording, ordering and emphasis to the job description, and use the JD's "
                                  "terminology ONLY where the candidate genuinely has that skill/experience.",
-                                 f"Return JSON: {RESUME_SCHEMA}\n\nCURRENT RESUME SECTIONS:\n"
+                                 'Return JSON: {"changes":["short description of each suggested change and why"],'
+                                 f'{RESUME_SCHEMA[1:]}\n\nCURRENT RESUME SECTIONS:\n'
                                  f"{json.dumps(d['sections'], ensure_ascii=False)}\n\nJOB DESCRIPTION:\n{jd}")
             jd_title = jd.splitlines()[0][:60]
+            notes = [_clean(c, 300) for c in (data.get("changes") or []) if isinstance(c, str)][:12]
             doc = await save_resume(user, f"{d['title']} — tailored"[:100], d["resume_type"], d["personal"],
-                                    data.get("sections"), jd_title, "ai_tailor")
+                                    data.get("sections"), jd_title, "ai_tailor", d.get("template", "classic"),
+                                    d.get("missing_fields"), notes)
             await record_usage(user, "resume_generation", doc["resume_id"])
         return {"resume": doc}
 
     # ------------------------------------------------------------------ export
+    def contact_line(p: dict) -> list:
+        pref = p.get("preferred_location")
+        return [v for v in [p.get("email"), p.get("phone"), p.get("location"),
+                            f"Preferred location: {pref}" if pref else "", p.get("linkedin")] if v]
+
+    def export_sections(d: dict) -> list:
+        # Only content the candidate entered/confirmed is exported; guidance hints never are.
+        return [s for s in d.get("sections", []) if (s.get("content") or "").strip()]
+
     def render_docx(d: dict) -> bytes:
         from docx import Document
-        from docx.shared import Pt
+        from docx.shared import Pt, RGBColor
+        from docx.oxml.ns import qn
+        from docx.oxml import OxmlElement
+        t = TEMPLATES.get(d.get("template"), TEMPLATES["classic"])
         doc = Document()
         st = doc.styles["Normal"]
-        st.font.name = "Calibri"
-        st.font.size = Pt(11)
+        st.font.name = t["docx_font"]
+        st.font.size = Pt(t["body"])
+        st.paragraph_format.space_after = Pt(2)
         p = d.get("personal") or {}
         h = doc.add_paragraph()
         run = h.add_run(p.get("full_name") or "")
         run.bold = True
-        run.font.size = Pt(18)
-        contact = " | ".join(x for x in [p.get("email"), p.get("phone"), p.get("location"), p.get("linkedin")] if x)
+        run.font.size = Pt(t["name"])
+        if t["color"]:
+            run.font.color.rgb = RGBColor.from_string(t["color"][1:])
+        contact = " | ".join(contact_line(p))
         if contact:
             doc.add_paragraph(contact)
-        for s in d.get("sections", []):
+        for s in export_sections(d):
             hp = doc.add_paragraph()
+            hp.paragraph_format.space_before = Pt(8)
             hr = hp.add_run((s.get("title") or "").upper())
             hr.bold = True
-            hr.font.size = Pt(12)
+            hr.font.size = Pt(t["head"])
+            if t["color"]:
+                hr.font.color.rgb = RGBColor.from_string(t["color"][1:])
+            if t["rule"]:
+                pPr = hp._p.get_or_add_pPr()
+                bdr = OxmlElement("w:pBdr")
+                b = OxmlElement("w:bottom")
+                for k, v in (("w:val", "single"), ("w:sz", "6"), ("w:space", "1"), ("w:color", "999999")):
+                    b.set(qn(k), v)
+                bdr.append(b)
+                pPr.append(bdr)
             for line in (s.get("content") or "").splitlines():
                 line = line.rstrip()
                 if not line:
@@ -427,24 +520,30 @@ def build_router(db, get_current_user, require_admin, compute_membership, now_ut
         from reportlab.lib.pagesizes import A4
         from reportlab.lib.styles import ParagraphStyle
         from reportlab.lib.units import mm
-        from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
+        from reportlab.lib.colors import HexColor
+        from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, HRFlowable
         from xml.sax.saxutils import escape as x
+        t = TEMPLATES.get(d.get("template"), TEMPLATES["classic"])
+        col = HexColor(t["color"]) if t["color"] else HexColor("#111111")
         buf = io.BytesIO()
         pdf = SimpleDocTemplate(buf, pagesize=A4, leftMargin=18 * mm, rightMargin=18 * mm,
                                 topMargin=16 * mm, bottomMargin=16 * mm, title=d.get("title") or "Resume")
-        name = ParagraphStyle("n", fontName="Helvetica-Bold", fontSize=18, leading=22)
-        body = ParagraphStyle("b", fontName="Helvetica", fontSize=10.5, leading=14)
-        head = ParagraphStyle("h", fontName="Helvetica-Bold", fontSize=11.5, leading=15, spaceBefore=10,
-                              spaceAfter=3)
+        fb, fr = t["pdf_font"]
+        name = ParagraphStyle("n", fontName=fb, fontSize=t["name"], leading=t["name"] + 4, textColor=col)
+        body = ParagraphStyle("b", fontName=fr, fontSize=t["body"] - 0.5, leading=t["body"] + 3.5)
+        head = ParagraphStyle("h", fontName=fb, fontSize=t["head"], leading=t["head"] + 4, spaceBefore=10,
+                              spaceAfter=3, textColor=col)
         bullet = ParagraphStyle("bl", parent=body, leftIndent=12, bulletIndent=2)
         p = d.get("personal") or {}
         flow = [Paragraph(x(p.get("full_name") or ""), name)]
-        contact = " | ".join(x(v) for v in [p.get("email"), p.get("phone"), p.get("location"), p.get("linkedin")] if v)
+        contact = " | ".join(x(v) for v in contact_line(p))
         if contact:
             flow.append(Paragraph(contact, body))
         flow.append(Spacer(1, 4))
-        for s in d.get("sections", []):
+        for s in export_sections(d):
             flow.append(Paragraph(x((s.get("title") or "").upper()), head))
+            if t["rule"]:
+                flow.append(HRFlowable(width="100%", thickness=0.6, color=HexColor("#999999"), spaceAfter=4))
             for line in (s.get("content") or "").splitlines():
                 line = line.rstrip()
                 if not line:
