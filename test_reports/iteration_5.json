@@ -1,0 +1,40 @@
+{
+  "summary": "Iteration 5 — Membership upgrade/plan-change vs renewal fix VERIFIED. BACKEND: new /app/backend/tests/test_membership_upgrade.py 7/7 PASSED (public URL). Fresh candidate Quarterly→Half-Yearly→Annual gives expiry today+90 → today+180 (not 270) → today+365 (not ~2y); previous subs marked status 'upgraded' with upgraded_to; new sub is_upgrade=true, upgraded_from set, is_renewal=false. Annual again (same plan) = renewal → prev expiry+365, is_renewal=true, old annual sub stays 'active'. 4 payments (599/799/999/999) recorded & linked to subscriptions. GET /admin/subscriptions (incl. ?status=upgraded filter, effective_status='upgraded'), /admin/payments, /admin/candidates/{id}, /admin/dashboard all 200. /career/usage after Quarterly→Annual: tier=annual, limits 40, used counted from new purchase (2 seeded quarterly uses → 0). Edge cases: downgrade Annual→Quarterly → today+90; expired then buy → today+90 (not renewal); expiring_soon (7d) same-plan renewal → 7+180=187d. Dev panel: activate_90 → simulate_renewal (stack 180) → activate_90 (stack 270) → activate_365 (replace 365) → simulate_renewal (730) → reset_account all OK. Regression test_jobradar.py 27/27 PASSED after updating stale 499/699 price asserts to 599/799. FRONTEND (390x844): /plans as active member shows plan-change-note: same plan → 'Renewal: N days will be added after your current expiry (YYYY-MM-DD).', different plan → 'Plan change: your X will be replaced. The Y starts today and is valid for N days.'; demo checkout navigates to /membership with correct expiry (Quarterly→Annual: Expires 29 Oct 2027, 364 days; Annual→Half: 27 Apr 2027; Half renewal: 24 Oct 2027, 359 days). Membership cache refreshed correctly after checkout (note reflects new plan on return). No deprecated Expo packages found.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST /api/checkout/demo (_activate_subscription)", "issue": "Plan change discards remaining days with no credit/proration. Downgrade Annual (e.g. 300 days left) → Quarterly gives only today+90; upgrade Quarterly with 85 days left → Half-Yearly gives 180 from today. Per spec this is intended, but downgrades silently lose paid time — consider blocking downgrade while active, or crediting/queuing remaining days."},
+      {"endpoint": "GET /api/career/usage", "issue": "Usage window starts from latest subscription created_at, so a same-plan renewal while active resets used counts to 0 (fresh 40/25/15 immediately, even though prior plan period has not ended). Confirm this is desired."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "/plans", "issues": [
+        "plan-change-note is rendered at the top of the ScrollView; when user scrolls down to select Half-Yearly/Annual the note is off-screen (bbox y=-286), so the 'your plan will be replaced' warning is not visible at the moment they tap Continue to Payment. Suggest showing the note in/above the bottom bar near checkout-btn or a confirm dialog for plan change/downgrade.",
+        "Default selected plan for an active member is the featured Quarterly plan, not their current plan — e.g. Half-Yearly member opens /plans and immediately sees a 'Plan change ... Quarterly' (downgrade) note. Consider preselecting the current plan.",
+        "Note/demo banner text #D97706 on #FEF3C7 at 13px ≈ 2.9:1 contrast (below WCAG 4.5:1). Use a darker amber (e.g. #92400E)."
+      ]}
+    ],
+    "react_native_issues": []
+  },
+  "test_report_links": ["/app/backend/tests/test_membership_upgrade.py", "/app/backend/tests/test_jobradar.py", "/app/test_reports/pytest/pytest_membership_upgrade.xml"],
+  "action_items": [
+    "Optional UX: move/duplicate plan-change-note near the checkout button (or confirm dialog) so the replacement warning is visible when tapping Continue to Payment",
+    "Optional UX: preselect the member's current plan on /plans",
+    "Product decision: handle downgrade while active (block, warn strongly, or credit remaining days)",
+    "Optional: improve contrast of amber banner text"
+  ],
+  "critical_code_review_comments": [
+    "server.py is ~1495 lines — should be split into routers (auth, jobs, membership, admin, dev).",
+    "_activate_subscription: on renewal start_date keeps original start (base_start) — fine; old sub not marked on renewal so multiple 'active' docs exist per candidate; compute_membership relies on latest created_at, admin listing uses effective_status for latest only — OK but older active rows show raw 'active'.",
+    "plans.tsx: changeNote uses String(mem.expiry_date).slice(0,10) (ISO date) while /membership shows '24 Oct 2027' — inconsistent date formatting."
+  ],
+  "updated_files": ["/app/backend/tests/test_membership_upgrade.py (new)", "/app/backend/tests/test_jobradar.py (price asserts 499/699 → 599/799)"],
+  "success_rate": {"backend": "100% (7/7 new + 27/27 regression)", "frontend": "100% of requested flows"},
+  "seed_data_creation": "Fresh test_upg_*@example.com candidates created per test and fully deleted (users, sessions, subscriptions, payments, email_logs, career_usage) in teardown. 2 career_usage docs seeded via Mongo for usage test (cleaned).",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Run `python -m pytest backend/tests/test_membership_upgrade.py -v -n 0` (~10s, no AI). Tests use pymongo with MONGO_URL/DB_NAME from backend/.env for sub-doc assertions and cleanup. Plan IDs: quarterly plan_595f26fc, half plan_2305f320, annual plan_75b44415. Career limits currently free 2/2/1, quarterly 15, half 25, annual 40. In Playwright, plan cards near the bottom bar must be scrollIntoView'd before click (bottom bar intercepts center-point force clicks)."
+}

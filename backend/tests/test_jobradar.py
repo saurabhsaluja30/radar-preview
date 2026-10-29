@@ -97,8 +97,8 @@ def test_config(s):
 # ---------------- Plan prices (NEW) ----------------
 def test_plan_prices_updated(plans):
     assert 90 in plans and 180 in plans and 365 in plans
-    assert plans[90]["price"] == 499, f"Quarterly expected 499 got {plans[90]['price']}"
-    assert plans[180]["price"] == 699, f"Half-Yearly expected 699 got {plans[180]['price']}"
+    assert plans[90]["price"] == 599, f"Quarterly expected 599 got {plans[90]['price']}"
+    assert plans[180]["price"] == 799, f"Half-Yearly expected 799 got {plans[180]['price']}"
     assert plans[365]["price"] == 999, f"Annual expected 999 got {plans[365]['price']}"
 
 
@@ -210,12 +210,12 @@ def test_jobs_list_non_member_locked(s, cand_h):
 # ---------------- Demo checkout with new price ----------------
 def test_demo_checkout_quarterly(s, fresh_candidate, cand_h, plans):
     plan = plans[90]
-    assert plan["price"] == 499
+    assert plan["price"] == 599
     r = s.post(f"{API}/checkout/demo", headers=cand_h, json={"plan_id": plan["plan_id"]}, timeout=30)
     assert r.status_code == 200, r.text
     body = r.json()
     assert body["payment"]["is_demo"] is True
-    assert body["payment"]["amount"] == 499
+    assert body["payment"]["amount"] == 599
     m = body["membership"]
     assert m["is_active"] is True
     assert 88 <= m["days_remaining"] <= 90

@@ -1,0 +1,32 @@
+{
+  "summary": "Iteration 6: membership downgrade guard + /plans UX follow-ups VERIFIED. BACKEND 38/38 PASSED (test_membership_upgrade.py 11/11 incl. new downgrade-block tests, test_jobradar.py 27/27). Active Annual -> checkout Quarterly/Half = 400 'You can switch to a shorter plan after your current plan expires...'; payments stay at 1; subscription count, plan_id, expiry and subscription_id unchanged; Annual sub stays 'active'. Half->Quarterly = 400, then Half->Annual = today+365. Quarterly->Annual = today+365, then Annual renewal = today+730. Downgrade after expire_now is allowed (today+90). Unknown plan = 404. Dev panel activate/renew still work and bypass the guard (activate_365 -> simulate_renewal 730 -> activate_90 replaces to today+90 -> reset). FRONTEND (390x844, fresh candidate on Half-Yearly): /plans preselects the current plan (Half border highlighted, renewal note). Top note and bottom-bar note show identical text for same plan (Renewal...2027-04-27), longer plan (Upgrade: your Half-Yearly Plan will be replaced. The Annual Plan starts today and is valid for 365 days.) and shorter plan (You can switch to the Quarterly Plan after your current Half-Yearly Plan expires (2027-04-27).). checkout-btn has aria-disabled=true for the shorter plan, and tapping it sends no /api/checkout request. Upgrade checkout navigates to /membership showing Annual Plan, 364 days remaining, Expires 29 Oct 2027 (today+365). Returning to /plans preselects Annual with renewal note; Half and Quarterly both show the switch-later note with the button disabled. Note text is #1F2937 on #FEF3C7, good contrast. No deprecated Expo packages in the reviewed file.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "/plans", "issues": [
+        "ScrollView paddingBottom is insets.bottom+120, but the bottom bar is about 115px with a 2-line note (policy text ends at y=724, bar starts at about 729 on 390x844). A 3-line note (numberOfLines=3, long plan names or narrow screens) would cover the end of the policy text. Consider about 160px of padding, or measure the bar with onLayout.",
+        "Bottom-bar note has no background or icon, so it reads as plain text. Optional: reuse the amber banner style for consistency with the top note."
+      ]}
+    ],
+    "react_native_issues": []
+  },
+  "test_report_links": ["/app/backend/tests/test_membership_upgrade.py", "/app/backend/tests/test_jobradar.py", "/app/test_reports/pytest/pytest_iter6.xml"],
+  "action_items": [
+    "Minor: increase /plans ScrollView paddingBottom (or use the bottom bar's onLayout height) so a 3-line plan-change-note-bottom never covers the last content",
+    "Optional: when checkout-btn is disabled for a shorter plan, consider a 'Renew current plan' shortcut or changing the button label (e.g. 'Available after current plan expires')"
+  ],
+  "critical_code_review_comments": [
+    "server.py checkout_demo: guard runs before the payment insert, so blocked downgrades create no payment or email. Correct.",
+    "The guard compares duration_days of the current and target plans. If an admin later makes two plans with equal duration, a switch between them is treated as an upgrade (today+duration, remaining days lost). Acceptable edge case.",
+    "server.py is 1500+ lines (above the 700-line guideline). Consider splitting the membership/checkout/admin-dev routes into modules.",
+    "plans.tsx: the effect on [mem.is_active, mem.plan_id] resets the selection only when the membership's plan changes, not on every refetch. Fine."
+  ],
+  "updated_files": ["/app/backend/tests/test_membership_upgrade.py (replaced the old downgrade-success test with 5 tests: downgrade blocked, half->quarterly blocked + half->annual OK, quarterly->annual + renewal, downgrade after expiry allowed, unknown plan 404; added a dev-panel activate_90-after-annual bypass assertion)"],
+  "success_rate": {"backend": "100% (38/38)", "frontend": "100% of requested flows"},
+  "seed_data_creation": "Fresh TEST_ candidates created by pytest and one UI user (test_ui6_515b56@example.com); all cleaned up afterwards.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Run `python -m pytest backend/tests/test_membership_upgrade.py backend/tests/test_jobradar.py -v -n 0` (~17s, no AI). Plan IDs: quarterly plan_595f26fc, half plan_2305f320, annual plan_75b44415. In Playwright, scroll plan cards with el.evaluate(\"e => e.scrollIntoView({block:'center'})\") before clicking. scroll_into_view_if_needed can leave the card under the absolute bottom bar, and the force click then lands on the bar. A disabled checkout-btn exposes aria-disabled=true."
+}

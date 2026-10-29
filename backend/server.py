@@ -789,24 +789,33 @@ async def my_payments(user=Depends(get_current_user)):
 
 
 async def _activate_subscription(candidate_id: str, plan: dict, is_demo: bool, payment_id: str) -> dict:
-    """Apply activation/renewal logic; stack duration onto active memberships."""
+    """Activation / renewal / plan change.
+    - Same plan while active  -> renewal: new duration is added after the current expiry.
+    - Different plan while active -> upgrade/change: new plan starts today and replaces the old one
+      (expiry = today + new plan duration; durations are NOT stacked).
+    - No active plan -> starts today."""
     current = await compute_membership(candidate_id)
     duration = int(plan["duration_days"])
-    if current["is_active"] and current.get("expiry_date"):
+    is_upgrade = bool(current["is_active"] and current.get("plan_id") and current["plan_id"] != plan["plan_id"])
+    if current["is_active"] and current.get("expiry_date") and not is_upgrade:
         start = parse_dt(current["expiry_date"]) or now_utc()
         base_start = parse_dt(current.get("start_date")) or now_utc()
     else:
         start = now_utc()
         base_start = now_utc()
+    if is_upgrade and current.get("subscription_id"):
+        await db.subscriptions.update_one({"subscription_id": current["subscription_id"]}, {"$set": {
+            "status": "upgraded", "upgraded_to": plan["plan_id"], "updated_at": now_iso()}})
     expiry = start + timedelta(days=duration)
     sub_id = f"sub_{uuid.uuid4().hex[:12]}"
-    renewal = current["is_active"]
+    renewal = current["is_active"] and not is_upgrade
     await db.subscriptions.insert_one({
         "subscription_id": sub_id, "candidate_id": candidate_id,
         "plan_id": plan["plan_id"], "plan_name": plan["name"],
         "start_date": base_start.isoformat(), "expiry_date": expiry.isoformat(),
         "status": "active", "is_demo": is_demo, "payment_id": payment_id,
-        "is_renewal": renewal, "reminders_sent": [],
+        "is_renewal": renewal, "is_upgrade": is_upgrade,
+        "upgraded_from": current.get("plan_id") if is_upgrade else None, "reminders_sent": [],
         "created_at": now_iso(), "updated_at": now_iso(),
     })
     return await compute_membership(candidate_id)
@@ -817,6 +826,13 @@ async def checkout_demo(req: CheckoutReq, user=Depends(get_current_user)):
     plan = await db.plans.find_one({"plan_id": req.plan_id, "active": True}, {"_id": 0})
     if not plan:
         raise HTTPException(status_code=404, detail="Plan not found")
+    current = await compute_membership(user["user_id"])
+    if current["is_active"] and current.get("plan_id") and current["plan_id"] != plan["plan_id"]:
+        cur_plan = await db.plans.find_one({"plan_id": current["plan_id"]}, {"_id": 0, "duration_days": 1})
+        if cur_plan and int(plan["duration_days"]) < int(cur_plan.get("duration_days") or 0):
+            raise HTTPException(status_code=400, detail=(
+                "You can switch to a shorter plan after your current plan expires. "
+                "Renew your current plan or upgrade to a longer plan."))
     order_id = f"order_demo_{uuid.uuid4().hex[:12]}"
     payment_id = f"pay_demo_{uuid.uuid4().hex[:12]}"
     payment = {

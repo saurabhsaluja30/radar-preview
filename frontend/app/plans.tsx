@@ -34,15 +34,37 @@ export default function Plans() {
   const plans: any[] = data?.plans || [];
   const [selected, setSelected] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const { data: memData } = useQuery({
+    queryKey: ["membership"],
+    queryFn: () => api("/membership"),
+    enabled: !!user,
+  });
+  const mem = memData?.membership;
 
   useEffect(() => {
     if (plans.length && !selected) {
-      const rec = plans.find((p) => p.featured) || plans[0];
+      const current = mem?.is_active ? plans.find((p) => p.plan_id === mem.plan_id) : null;
+      const rec = current || plans.find((p) => p.featured) || plans[0];
       setSelected(rec.plan_id);
     }
-  }, [plans, selected]);
+  }, [plans, selected, mem]);
+
+  useEffect(() => {
+    if (mem?.is_active && mem.plan_id) setSelected(mem.plan_id);
+  }, [mem?.is_active, mem?.plan_id]);
 
   const maxDuration = Math.max(...plans.map((p) => p.duration_days || 0), 0);
+  const curPlan = mem?.is_active ? plans.find((p) => p.plan_id === mem.plan_id) : null;
+  const selPlan = plans.find((p) => p.plan_id === selected);
+  const isDowngrade = !!(curPlan && selPlan && selPlan.duration_days < curPlan.duration_days);
+  const changeNote =
+    mem?.is_active && selPlan
+      ? selPlan.plan_id === mem.plan_id
+        ? `Renewal: ${selPlan.duration_days} days will be added after your current expiry (${String(mem.expiry_date).slice(0, 10)}).`
+        : isDowngrade
+          ? `You can switch to the ${selPlan.name} after your current ${mem.plan_name} expires (${String(mem.expiry_date).slice(0, 10)}).`
+          : `Upgrade: your ${mem.plan_name} will be replaced. The ${selPlan.name} starts today and is valid for ${selPlan.duration_days} days.`
+      : null;
 
   const checkout = async () => {
     if (!user) {
@@ -67,7 +89,7 @@ export default function Plans() {
   return (
     <View style={styles.screen}>
       <ScreenHeader title="Membership Plans" />
-      <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: insets.bottom + 120 }} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: insets.bottom + 170 }} showsVerticalScrollIndicator={false}>
         <Text style={styles.h1}>Unlock Premium Job Discovery</Text>
         <Text style={styles.sub}>
           Save hours of searching. Get curated opportunities and apply directly to employers.
@@ -77,6 +99,11 @@ export default function Plans() {
           <Sparkle size={16} color={colors.warning} weight="fill" />
           <Text style={styles.demoTxt}>Demo mode — no real payment is charged.</Text>
         </View>
+        {changeNote ? (
+          <View style={[styles.demoBanner, { marginTop: 10 }]} testID="plan-change-note">
+            <Text style={styles.noteTxt}>{changeNote}</Text>
+          </View>
+        ) : null}
 
         <View style={{ marginTop: 16 }}>
           <OpportunityNotice />
@@ -142,10 +169,16 @@ export default function Plans() {
       </ScrollView>
 
       <View style={[styles.bottomBar, { paddingBottom: insets.bottom + 12 }]}>
+        {changeNote ? (
+          <Text style={styles.noteTxt} numberOfLines={3} testID="plan-change-note-bottom">
+            {changeNote}
+          </Text>
+        ) : null}
         <Button
-          title={loading ? "Processing…" : "Continue to Payment"}
+          title={isDowngrade ? "Available after current plan expires" : loading ? "Processing…" : "Continue to Payment"}
           onPress={checkout}
           loading={loading}
+          disabled={isDowngrade}
           testID="checkout-btn"
         />
       </View>
@@ -167,6 +200,7 @@ const useStyles = makeStyles((colors) => ({
     marginTop: 16,
   },
   demoTxt: { color: colors.warning, fontSize: 13, fontWeight: "700" },
+  noteTxt: { color: colors.onSurface, fontSize: 13, fontWeight: "600", lineHeight: 18, marginBottom: 8 },
   plan: {
     backgroundColor: colors.surface,
     borderWidth: 2,
