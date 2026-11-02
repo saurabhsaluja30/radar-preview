@@ -40,6 +40,12 @@ export const OPPORTUNITY_NOTICE =
 
 export const WORK_MODES = ["Work From Office", "Hybrid", "Remote"];
 
+export const OPPORTUNITY_NOTICE_FREE =
+  "JobRadar currently provides curated job opportunities primarily across HR & Recruitment, Finance & Accounting, " +
+  "IT & Technology, Travel & Hospitality, and BPO / Customer Experience. We also publish selected opportunities from " +
+  "India and international markets. Access is currently free for our first members. JobRadar provides access to " +
+  "curated job information and application opportunities and does not guarantee a job, interview or employment.";
+
 export const EXPERIENCE_RANGES = ["0-2 years", "2-5 years", "5-8 years", "8+ years"];
 
 export const JOB_STATUSES = ["Draft", "Published", "Unpublished", "Expired"];
@@ -55,7 +61,7 @@ export const MEMBERSHIP_UI: Record<
   cancelled: { label: "Cancelled", color: "error", hint: "Your membership was cancelled." },
   payment_failed: { label: "Payment Failed", color: "error", hint: "Your last payment could not be completed." },
   pending: { label: "Pending Payment", color: "warning", hint: "Complete your payment to activate." },
-  no_membership: { label: "No Membership", color: "info", hint: "Become a member to unlock full job details." },
+  no_membership: { label: "No Membership", color: "info", hint: "Get access to unlock full job details." },
 };
 
 export const CATEGORY_ICONS: Record<string, string> = {

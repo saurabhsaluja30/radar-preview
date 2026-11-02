@@ -192,7 +192,7 @@ export default function Explore() {
         )}
         ListHeaderComponent={Header}
         stickyHeaderIndices={[0]}
-        refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={colors.brandPrimary} />}
+        refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={() => { refetch(); }} tintColor={colors.brandPrimary} />}
         ListEmptyComponent={
           !isLoading ? (
             <EmptyState

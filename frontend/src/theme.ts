@@ -3,6 +3,9 @@
 
 import { useMemo } from "react";
 import { Appearance, StyleSheet, useColorScheme } from "react-native";
+import type { ImageStyle, TextStyle, ViewStyle } from "react-native";
+
+type NamedStyles<T> = { [P in keyof T]: ViewStyle | TextStyle | ImageStyle };
 
 export type ColorScheme = "light" | "dark";
 
@@ -51,7 +54,7 @@ export const defaultScheme = "light" satisfies ColorScheme;
 export const themes: { light: ThemeColors; dark?: ThemeColors } = { light };
 
 export function setColorScheme(scheme: ColorScheme | null) {
-  Appearance.setColorScheme?.(scheme);
+  Appearance.setColorScheme?.(scheme ?? "unspecified");
 }
 
 setColorScheme?.(themes.dark ? null : defaultScheme);
@@ -62,8 +65,8 @@ export function useTheme(): { scheme: ColorScheme; colors: ThemeColors } {
   return { scheme, colors: themes[scheme] ?? themes.light };
 }
 
-export function makeStyles<T extends StyleSheet.NamedStyles<T> | StyleSheet.NamedStyles<any>>(
-  factory: (colors: ThemeColors) => T & StyleSheet.NamedStyles<any>,
+export function makeStyles<T extends NamedStyles<T> | NamedStyles<any>>(
+  factory: (colors: ThemeColors) => T & NamedStyles<any>,
 ): () => T {
   return function useStyles(): T {
     const { colors } = useTheme();

@@ -23,6 +23,7 @@ import { useAuth } from "@/src/auth/AuthContext";
 import { BrandLogo } from "@/src/components/Brand";
 import { Button } from "@/src/components/ui";
 import { MembershipCard } from "@/src/components/MembershipCard";
+import { useLaunchOffer } from "@/src/components/LaunchOffer";
 import { useToast } from "@/src/components/Toast";
 
 export default function Account() {
@@ -31,6 +32,7 @@ export default function Account() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { user, membership, logout, googleLogin, refresh } = useAuth();
+  const { data: launch } = useLaunchOffer();
   const toast = useToast();
 
   const doGoogle = async () => {
@@ -83,7 +85,7 @@ export default function Account() {
   const links = [
     { icon: SquaresFour, label: "Dashboard", to: "/dashboard" },
     { icon: Briefcase, label: "Career Tools", to: "/career" },
-    { icon: CreditCard, label: "Membership & Plans", to: "/membership" },
+    { icon: CreditCard, label: launch?.plans_hidden ? "My Access" : "Membership & Plans", to: "/membership" },
     { icon: UserGear, label: "Edit Profile", to: "/profile" },
     { icon: Info, label: "About JobRadar", to: "/about" },
     { icon: Question, label: "FAQ", to: "/faq" },
@@ -124,7 +126,8 @@ export default function Account() {
       <View style={{ paddingHorizontal: 16, marginTop: 8 }}>
         <MembershipCard
           membership={membership}
-          onRenew={() => router.push("/plans")}
+          hidePlanName={!!launch?.plans_hidden}
+          onRenew={launch?.plans_hidden ? undefined : () => router.push("/plans")}
         />
       </View>
 

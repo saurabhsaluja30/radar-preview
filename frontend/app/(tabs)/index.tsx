@@ -64,6 +64,10 @@ export default function Home() {
   const router = useRouter();
   const { user } = useAuth();
   const { data: launch } = useLaunchOffer();
+  const hidden = !!launch?.plans_hidden;
+  const steps = hidden
+    ? STEPS.map((s, i) => (i === 1 ? { ...s, title: "Get free access", desc: "Our first members get free full access." } : s))
+    : STEPS;
 
   const { data: cfg } = useQuery({ queryKey: ["config"], queryFn: () => api("/config", { auth: false }) });
   const { data: plansData } = useQuery({ queryKey: ["plans"], queryFn: () => api("/plans", { auth: false }) });
@@ -115,7 +119,7 @@ export default function Home() {
                 title={launch?.plans_hidden ? (user ? "My Access" : "Claim Free Access") : "View Membership Plans"}
                 variant="secondary"
                 fullWidth={false}
-                onPress={() => router.push(launch?.plans_hidden && !user ? "/auth/register" : "/plans")}
+                onPress={() => router.push(launch?.plans_hidden ? (user ? "/membership" : "/auth/register") : "/plans")}
                 testID="hero-plans-btn"
               />
             </View>
@@ -126,7 +130,7 @@ export default function Home() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>How It Works</Text>
           <View style={{ gap: 12 }}>
-            {STEPS.map((s, i) => (
+            {steps.map((s, i) => (
               <View key={s.title} style={styles.step}>
                 <View style={styles.stepNum}>
                   <s.icon size={22} color={colors.brandPrimary} weight="duotone" />

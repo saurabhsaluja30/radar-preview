@@ -54,7 +54,7 @@ export default function Saved() {
             <JobCard job={item} />
           </View>
         )}
-        refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={colors.brandPrimary} />}
+        refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={() => { refetch(); }} tintColor={colors.brandPrimary} />}
         ListEmptyComponent={
           <EmptyState title="No saved jobs yet" subtitle="Tap the bookmark on any job to save it here." testID="saved-empty" />
         }

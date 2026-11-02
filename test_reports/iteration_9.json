@@ -1,0 +1,44 @@
+{
+  "summary": "Tested plans hiding (plans_hidden=true) plus a smoke test after the Expo SDK 58 upgrade, at 390x844. Backend: 6 of 6 pytest tests pass. GET /api/plans returns [] with plans_hidden true, GET /api/membership returns plans [], POST /api/checkout/demo returns 400, admin /api/admin/plans still lists the 3 plans, the toggle works and was restored, and PUT needs admin. Frontend: a fresh UI registration lands on home with Launch Offer granted and shows the 'You have free full access' card. As guest and as the new candidate, no prices, plan names or membership phrases appeared on /, /auth/register (free notice), /plans, /membership ('My Access'), /dashboard, /account ('My Access' link, no renew button), job detail ('Claim Free Access' goes to /auth/register; 'See My Access' for a logged-in non-member) and /explore. Toggling plans_hidden=false brings back ₹599/₹799/₹999, the 'Membership Plans' heading and 'Become a Member' on home and /plans; settings were then restored to enabled:true, plans_hidden:true, 100, 90. SDK 58 smoke: no red screens or page errors, and Metro is clean. Tabs, login/logout, explore filters, search and save-search all work. Career hub, resume builder, analyser and interview screens open. Admin login and all 9 admin pages load. Remaining issues: plan copy flashes while /launch-offer loads; accounts that already had a demo plan still show 'Quarterly Plan' and ₹ amounts; the 401 race on reload is still there. No deprecated Expo packages found.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "reminder/expiry emails (server.py:1311, 1396) and _welcome_line 'none' (server.py:889)", "issue": "Email text still says 'Renew now' or 'Choose a membership plan' even when plans_hidden=true. The welcome line only appears when the offer is disabled."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "Home / Register / Membership loading state", "issue": "Until GET /api/launch-offer resolves, launch is undefined and the screens default to the plans-visible copy. With the request delayed 4s I saw the hero button 'View Membership Plans', 'Step 2: Choose a membership', the 'Membership Plans' heading, the 'Become a Member' button and the register notice 'select a membership'. If the request fails, this copy stays for good. Reference: app/(tabs)/index.tsx:67,119,210; src/components/OpportunityNotice.tsx:20; app/membership.tsx:46; app/plans.tsx:91; app/job/[id].tsx:217,239", "testID": "hero-plans-btn, become-member-btn", "priority": "MEDIUM"},
+      {"component": "Existing members with demo/paid subscriptions (e.g. test@jobradar.com)", "issue": "The MembershipCard shows the plan name 'Quarterly Plan' (account, dashboard, /membership). /membership still lists Payment History with ₹499 amounts while hidden, and Career Tools badges say '...for your Quarterly Plan'. This conflicts with the 'no plan names or prices anywhere' requirement. Reference: app/membership.tsx:76-100; src/components/MembershipCard.tsx:38", "testID": "membership-status-card", "priority": "MEDIUM"},
+      {"component": "Hidden-mode CTAs route to /plans", "issue": "For logged-in users, 'My Access' (home hero) and 'See My Access' (job detail) go to /plans, whose header reads 'Membership', instead of /membership, whose header reads 'My Access'. Reference: app/(tabs)/index.tsx:122; app/job/[id].tsx:218,240; app/plans.tsx:94", "testID": "hero-plans-btn", "priority": "LOW"}
+    ],
+    "integration_issues": [
+      {"flow": "Full page load or reload on admin and candidate screens", "issue": "Still present from iteration 8. useQuery calls fire before AuthContext restores the token (authToken is a module variable in src/api/client.ts). The backend logs 401s for /api/admin/jobs, candidates, subscriptions, payments, emails, career/*, launch-offer and dev/candidates. Pages recover only because react-query retries. Fix: gate queries with enabled: !loading && !!user, or hold rendering in the root layout until auth is restored.", "affected_testIDs": ["admin-*"]}
+    ],
+    "design_issues": [
+      {"screen": "FAQ / Legal / Membership-guest", "issues": ["The FAQ still says 'JobRadar is a paid curated job-discovery membership platform' and has renew/refund Q&As (app/faq.tsx:10-18). Legal Terms say 'paid... membership platform' and 'plans, pricing' (app/legal/[type].tsx:16-20). Neither has prices, but both contradict the free-access messaging.", "MEMBERSHIP_UI 'expired' and 'expiring_soon' hints say 'Renew...' even when plans are hidden (src/constants.ts:59-60).", "Guest /membership header still says 'Membership' and 'Login to view your membership.'"]}
+    ],
+    "react_native_issues": []
+  },
+  "test_report_links": ["/app/backend/tests/test_plans_hidden.py", "/app/backend/tests/iter9_toggle_helper.py", "/app/test_reports/pytest/pytest_iter9.xml"],
+  "action_items": [
+    "Treat launch-offer loading as hidden (e.g. const hidden = launch ? launch.plans_hidden : true), or show a skeleton, so plan copy never flashes or sticks when /api/launch-offer is slow or fails. Apply this on home, the register OpportunityNotice, membership, plans and job detail.",
+    "Decide whether accounts that already had a demo plan should see the plan name, payment history and ₹ amounts while plans are hidden. If not, hide Payment History and show a generic 'Full Access' label instead of plan_name when plans_hidden is on.",
+    "Route the logged-in 'My Access' / 'See My Access' CTAs to /membership instead of /plans.",
+    "Make the FAQ/Terms copy and the MEMBERSHIP_UI renew hints depend on plans_hidden, and skip 'Renew now' reminder emails while plans_hidden is on.",
+    "Fix the auth-restore race that causes 401s on reload (still open from iteration 8).",
+    "Clean up the test candidates created this run: test_iter9_cbf34b@example.com, test_iter9_da0443@example.com, test_iter9_ui_ed5c77@example.com (each used a free spot) and test_iter9_nomem_c7dd7d@example.com (registered with the offer disabled, so no spot used)."
+  ],
+  "critical_code_review_comments": [
+    "server.py is 1621 lines; it should be split into routers (auth, jobs, membership/launch, admin, career).",
+    "The admin PUT /admin/launch-offer does not invalidate the client ['launch-offer'] query (app/admin/launch.tsx), so the open app shows stale hidden/visible state until it refetches.",
+    "The backend gating is correct: /plans and /membership return [] and checkout/demo returns 400 while hidden."
+  ],
+  "updated_files": ["/app/backend/tests/test_plans_hidden.py (new)", "/app/backend/tests/iter9_toggle_helper.py (new)"],
+  "success_rate": {"backend": "100% (6/6)", "frontend": "~90% (all requested flows pass; loading-flash and legacy-member plan-name issues)"},
+  "seed_data_creation": "Created candidates test_iter9_cbf34b@example.com, test_iter9_da0443@example.com, test_iter9_ui_ed5c77@example.com (granted) and test_iter9_nomem_c7dd7d@example.com (no membership; offer was briefly disabled to create it). Password for all is Test@12345. launch_offer granted went 2 to 5. A temporary saved search on test@jobradar.com was deleted.",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Run pytest with -n 0. With xdist, the toggle test races the hidden-state asserts. The backend env var is EXPO_PUBLIC_BACKEND_URL. Use tests/iter9_toggle_helper.py: 'set <enabled 0|1> <hidden 0|1>' changes the launch settings, and 'register' creates a candidate. The final state was restored to enabled:true, plans_hidden:true, free_spots:100, free_days:90. test@jobradar.com has an active demo 'Quarterly Plan' with payments of ₹499. test_iter9_nomem_c7dd7d@example.com has no membership, which is useful for checking 'See My Access' and 'Membership opening soon'.",
+  "rca_of_issue": "Loading flash: every screen computes hidden = !!launch?.plans_hidden, so 'undefined' while loading becomes 'not hidden' and the paid-plan UI renders until the query resolves. Reproduce by delaying /api/launch-offer by 4s with page.route; the hero shows 'View Membership Plans'. Mitigation: default to hidden while loading."
+}

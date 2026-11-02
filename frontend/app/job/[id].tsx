@@ -25,6 +25,7 @@ import { Button } from "@/src/components/ui";
 import { ScreenHeader } from "@/src/components/Brand";
 import { useToast } from "@/src/components/Toast";
 import { formatDate } from "@/src/utils/format";
+import { useLaunchOffer } from "@/src/components/LaunchOffer";
 
 export default function JobDetail() {
   const styles = useStyles();
@@ -33,6 +34,7 @@ export default function JobDetail() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { user, isMember } = useAuth();
+  const { data: launch } = useLaunchOffer();
   const toast = useToast();
   const qc = useQueryClient();
 
@@ -212,8 +214,8 @@ export default function JobDetail() {
                     members.
                   </Text>
                   <Button
-                    title="Become a Member to View Full Details"
-                    onPress={() => router.push("/plans")}
+                    title={launch?.plans_hidden ? (user ? "See My Access" : "Claim Free Access to View Full Details") : "Become a Member to View Full Details"}
+                    onPress={() => router.push(launch?.plans_hidden ? (user ? "/membership" : "/auth/register") : "/plans")}
                     testID="job-unlock-btn"
                   />
                 </View>
@@ -233,7 +235,11 @@ export default function JobDetail() {
             icon={<PaperPlaneTilt size={18} color={colors.onBrandPrimary} weight="fill" />}
           />
         ) : (
-          <Button title="View Membership Plans" onPress={() => router.push("/plans")} testID="job-plans-btn" />
+          <Button
+            title={launch?.plans_hidden ? (user ? "See My Access" : "Claim Free Access") : "View Membership Plans"}
+            onPress={() => router.push(launch?.plans_hidden ? (user ? "/membership" : "/auth/register") : "/plans")}
+            testID="job-plans-btn"
+          />
         )}
         {job ? (
           <Button

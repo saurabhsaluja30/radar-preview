@@ -199,7 +199,9 @@ def build_router(db, get_current_user, require_admin, compute_membership, now_ut
             sub = await db.subscriptions.find_one({"subscription_id": m.get("subscription_id")},
                                                   {"_id": 0, "created_at": 1})
             since = (sub or {}).get("created_at") or since
-            period_label = f"for your {m.get('plan_name') or 'plan'} (valid till {(m.get('expiry_date') or '')[:10]})"
+            lo = await db.app_settings.find_one({"key": "launch_offer"}, {"_id": 0, "plans_hidden": 1})
+            name = "access" if (lo or {}).get("plans_hidden") else (m.get("plan_name") or "plan")
+            period_label = f"for your {name} (valid till {(m.get('expiry_date') or '')[:10]})"
         usage = {}
         for k in KINDS:
             used = await db.career_usage.count_documents(

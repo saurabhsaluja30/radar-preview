@@ -12,6 +12,7 @@ import { ScreenHeader } from "@/src/components/Brand";
 import { MembershipCard } from "@/src/components/MembershipCard";
 import { OpportunityNotice } from "@/src/components/OpportunityNotice";
 import { money, formatDate } from "@/src/utils/format";
+import { LaunchOfferCard, useLaunchOffer } from "@/src/components/LaunchOffer";
 
 export default function Membership() {
   const styles = useStyles();
@@ -19,6 +20,7 @@ export default function Membership() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { user } = useAuth();
+  const { data: launch } = useLaunchOffer();
 
   const { data } = useQuery({
     queryKey: ["membership", user?.user_id],
@@ -29,9 +31,9 @@ export default function Membership() {
   if (!user) {
     return (
       <View style={styles.screen}>
-        <ScreenHeader title="Membership" />
+        <ScreenHeader title={launch?.plans_hidden ? "My Access" : "Membership"} />
         <View style={{ padding: 24, gap: 16 }}>
-          <Text style={styles.info}>Login to view your membership.</Text>
+          <Text style={styles.info}>Login to view your {launch?.plans_hidden ? "access" : "membership"}.</Text>
           <Button title="Login" onPress={() => router.push("/auth/login")} />
         </View>
       </View>
@@ -41,33 +43,38 @@ export default function Membership() {
   const membership = data?.membership;
   const payments: any[] = data?.payments || [];
   const plans: any[] = data?.plans || [];
+  const hidden = !!launch?.plans_hidden;
 
   return (
     <View style={styles.screen}>
-      <ScreenHeader title="Membership" />
+      <ScreenHeader title={hidden ? "My Access" : "Membership"} />
       <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: insets.bottom + 24 }} showsVerticalScrollIndicator={false}>
-        <MembershipCard membership={membership} onRenew={() => router.push("/plans")} />
+        <MembershipCard membership={membership} hidePlanName={hidden} onRenew={hidden ? undefined : () => router.push("/plans")} />
 
         <View style={{ marginTop: 16 }}>
-          <OpportunityNotice />
+          {hidden ? <LaunchOfferCard /> : <OpportunityNotice />}
         </View>
 
-        <Text style={styles.section}>Available Plans</Text>
-        <View style={{ gap: 10 }}>
-          {plans.map((p) => (
-            <Card key={p.plan_id} style={styles.planRow}>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.planName}>{p.name}</Text>
-                <Text style={styles.planDur}>{p.duration_days} days · {money(p.price, p.currency)}</Text>
-              </View>
-              {p.featured ? <Badge label="Recommended" color="brand" /> : null}
-            </Card>
-          ))}
-          <Button title="Renew / Upgrade" onPress={() => router.push("/plans")} testID="membership-plans-btn" />
-        </View>
+        {!hidden ? (
+          <>
+            <Text style={styles.section}>Available Plans</Text>
+            <View style={{ gap: 10 }}>
+              {plans.map((p) => (
+                <Card key={p.plan_id} style={styles.planRow}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.planName}>{p.name}</Text>
+                    <Text style={styles.planDur}>{p.duration_days} days · {money(p.price, p.currency)}</Text>
+                  </View>
+                  {p.featured ? <Badge label="Recommended" color="brand" /> : null}
+                </Card>
+              ))}
+              <Button title="Renew / Upgrade" onPress={() => router.push("/plans")} testID="membership-plans-btn" />
+            </View>
+          </>
+        ) : null}
 
-        <Text style={styles.section}>Payment History</Text>
-        {payments.length === 0 ? (
+        {hidden ? null : <Text style={styles.section}>Payment History</Text>}
+        {hidden ? null : payments.length === 0 ? (
           <Card><Text style={styles.info}>No payments yet.</Text></Card>
         ) : (
           <View style={{ gap: 10 }}>
@@ -92,6 +99,8 @@ export default function Membership() {
           </View>
         )}
 
+        {hidden ? null : (
+        <>
         <Text style={styles.section}>Policies</Text>
         <Card>
           <Text style={styles.policyTitle}>Refund Policy</Text>
@@ -99,6 +108,8 @@ export default function Membership() {
           <Text style={[styles.policyTitle, { marginTop: 12 }]}>Cancellation Policy</Text>
           <Text style={styles.policyTxt}>You may cancel anytime; access continues until your current expiry date. Membership does not auto-renew in demo mode.</Text>
         </Card>
+        </>
+        )}
       </ScrollView>
     </View>
   );

@@ -13,6 +13,7 @@ import { ScreenHeader } from "@/src/components/Brand";
 import { MembershipCard } from "@/src/components/MembershipCard";
 import { money, formatDate } from "@/src/utils/format";
 import { CareerToolsCards } from "@/src/components/career";
+import { useLaunchOffer } from "@/src/components/LaunchOffer";
 
 export default function Dashboard() {
   const styles = useStyles();
@@ -20,6 +21,7 @@ export default function Dashboard() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { user } = useAuth();
+  const { data: launch } = useLaunchOffer();
 
   const { data } = useQuery({
     queryKey: ["dashboard", user?.user_id],
@@ -65,7 +67,7 @@ export default function Dashboard() {
         </View>
 
         <View style={{ paddingHorizontal: 16 }}>
-          <MembershipCard membership={membership} onRenew={() => router.push("/plans")} />
+          <MembershipCard membership={membership} hidePlanName={!!launch?.plans_hidden} onRenew={launch?.plans_hidden ? undefined : () => router.push("/plans")} />
         </View>
 
         <View style={styles.block} testID="dashboard-career-tools">
@@ -94,8 +96,10 @@ export default function Dashboard() {
         {saved.length > 0 && <HScroll items={saved} />}
 
         <View style={styles.block}>
-          <SectionTitle title="Payment History" />
-          {payments.length === 0 ? (
+          <SectionTitle title={launch?.plans_hidden ? "Payments" : "Payment History"} />
+          {launch?.plans_hidden ? (
+            <Card><Text style={styles.info}>No payment needed — you have free access during our launch.</Text></Card>
+          ) : payments.length === 0 ? (
             <Card><Text style={styles.info}>No payments yet.</Text></Card>
           ) : (
             <View style={{ gap: 10 }}>

@@ -1,0 +1,44 @@
+{
+  "summary": "Frontend regression testing after the Expo SDK 57 to 58 upgrade (expo 58.0.22, RN 0.88.1, React 19.3, expo-router 58.0.29), done at 390x844. No red screens, no error-boundary fallbacks and no bundling errors. Every requested flow works. (1) Home renders, including the LaunchOfferCard ('100 of 100 spots left'). (2) Tabs Home, Explore, Saved and Account all navigate. (3) Explore works: search, region/mode chips, sort toggle, and Save search with a toast followed by delete. (4) Job detail works: anonymous users see the locked preview (Unlock + Prepare for Interview); members see Apply. Prepare for Interview opens /career/interview?jobId with the title, company and JD prefilled. (5) Candidate login works, as do the Account links, membership card and the Dashboard Career Tools cards. (6) Registration works: empty submit shows a validation toast, and a full sign-up gives 'Launch Offer (Free 90 days)' Active; logout works. (7) /plans shows only the launch-offer card with no checkout; /membership loads. (8) Career Tools: /career tiers and cards load. The resume builder fresher templates preview the sample, and Use This Template opens the editor at /career/resume/[id]. The Preview modal opens and closes, the Download sheet shows PDF/DOCX/Cancel and Save shows a toast. Experienced mode shows the rb-upload button and the paste box. The analyser and interview setup forms load and History tabs load. No AI calls were triggered. (9) Admin login gives a dashboard with 8 metrics and 8 nav entries; /admin/career, /admin/launch and /admin/jobs (search plus the row action menu) and /admin/job-edit all load. Issues found are not caused by the upgrade, apart from one possible web Switch rendering change: /profile kicks logged-in users to the login screen on reload, and screens fire API calls before the auth token is restored, producing 401s. No deprecated Expo packages found (no expo-av, expo-barcode-scanner or expo-background-fetch). SafeAreaView is not imported from react-native.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "Edit Profile (/profile)", "issue": "Reloading or deep-linking /profile while logged in redirects to /auth/login. React also logs 'Cannot update a component while rendering a different component', shown in the LogBox toast. Cause: app/profile.tsx:68-71 calls router.replace('/auth/login') during render when user is null and ignores AuthContext `loading`, so the redirect fires while the token is still being restored from storage. The form useState also starts from a null user, so fields would stay empty even after hydration. Opening Account > Edit Profile in-app works. Reference: /app/frontend/app/profile.tsx:68", "testID": "account-link-Edit Profile", "priority": "MEDIUM"},
+      {"component": "ScreenHeader back button", "issue": "On a deep-linked or reloaded page (e.g. /job/{id} opened directly) there is no history. Tapping '‹ Back' does nothing and logs \"The action 'GO_BACK' was not handled by any navigator\". It should fall back with router.canGoBack() ? router.back() : router.replace('/(tabs)'). Reference: /app/frontend/src/components/Brand.tsx:68", "testID": "header-back", "priority": "LOW"}
+    ],
+    "integration_issues": [
+      {"flow": "Cold load or refresh of auth-gated screens", "issue": "useQuery calls fire before AuthContext restores the token. The backend logs show 401s for GET /api/career/resumes, /career/analyses, /career/interviews, /admin/career/stats, /admin/career/settings, /admin/launch-offer and /admin/jobs, which succeed only after react-query retries. This produces console 401 noise and slower first paint. Fix: add enabled: !!user && !loading (or gate rendering on auth loading).", "affected_testIDs": ["hist-tab-resumes", "admin-career-stats", "admin-launch-settings", "admin-job-search"]},
+      {"flow": "Candidate opens an /admin/* sub-route", "issue": "A logged-in candidate who goes to /admin/launch sees the admin shell ('Waitlist (0)'). The API correctly returns 403, but the UI has no role guard. Only app/admin/index.tsx:29 checks role. Add the role guard in app/admin/_layout.tsx.", "affected_testIDs": ["admin-launch-settings"]}
+    ],
+    "design_issues": [
+      {"screen": "/membership", "issues": ["Lists 'Available Plans' with prices (₹599/₹799/₹999) plus a 'Renew / Upgrade' button even though plans_hidden is ON. /plans correctly hides them. membership.tsx does not check launch.plans_hidden."]},
+      {"screen": "Home 'How It Works'", "issues": ["Step 2 'Choose a membership – Pick a plan' still shows while plans are hidden during the launch offer."]},
+      {"screen": "Admin Launch/Career toggles (web)", "issues": ["Switch thumbs look offset upward relative to the track on web (thumb sits at the top edge). Check after the RN-web/SDK58 upgrade."]},
+      {"screen": "Resume editor bottom bar", "issues": ["The 'Download Resume' button label wraps onto 2 lines at 390px and is not centred. Shorten it to 'Download' or reduce the font size."]},
+      {"screen": "Account membership card", "issues": ["A newly registered launch-offer user sees '89 days remaining' immediately after a 90-day grant (off-by-one in the day calculation)."]}
+    ],
+    "react_native_issues": []
+  },
+  "test_report_links": [".screenshots/ (browser automation)"],
+  "action_items": [
+    "Fix app/profile.tsx: wait for auth `loading` before redirecting, move router.replace into a useEffect (or return <Redirect/>), and re-sync form state when user loads.",
+    "Gate auth-required useQuery calls on the auth state (enabled: !!user && !loading) to stop the 401 races on cold load.",
+    "Header back: fall back to router.replace('/(tabs)') when !router.canGoBack().",
+    "Add an admin role guard in app/admin/_layout.tsx for all /admin/* sub-routes.",
+    "Hide the plan list and prices on /membership while launch.plans_hidden is true, and adjust the How It Works step 2 copy.",
+    "Optional polish: Switch thumb alignment on web, the wrapping 'Download Resume' label, and the 89-vs-90 day count.",
+    "Clean up the test user registered during testing: test_sdk58_1793610471@example.com (it took 1 free launch spot; the admin launch page now shows 1 of 100 used)."
+  ],
+  "critical_code_review_comments": [
+    "profile.tsx calls a navigation side effect during render, which is a React anti-pattern and is now logged as an error by React 19.3.",
+    "api/client.ts attaches the token from a module variable, so any query mounted before AuthContext hydration runs unauthenticated.",
+    "tsc --noEmit passes after the upgrade type fixes."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "N/A (frontend only)", "frontend": "~92% (all requested flows pass; profile reload redirect bug plus minor issues)"},
+  "seed_data_creation": "Registered 1 candidate: test_sdk58_1793610471@example.com / Test@12345. Created and deleted 1 saved search and 1 resume (res_3663152efadb, deleted via API) for test@jobradar.com.",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "There is no data-testid='region-india' on Explore; use chip-region-India / chip-region-International. Save search (save-search-btn) only appears when a filter is active. In the resume builder, rb-use-{key} appears only after tapping rb-preview-{key} (keys: general, it, finance); the type buttons are rb-type-fresher-btn and rb-type-experienced-btn. Logging in by API revokes browser candidate sessions.",
+  "rca_of_issue": "Profile redirect: AuthContext restores the token asynchronously (loading=true, user=null). Profile renders and immediately calls router.replace('/auth/login') during render. Reproduce: log in, open /profile, reload. Mitigation: if (loading) show a spinner; if (!user) return <Redirect href='/auth/login'/>; initialise the form in a useEffect keyed on user."
+}

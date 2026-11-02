@@ -22,7 +22,7 @@ export default function Profile() {
   const [form, setForm] = useState({
     full_name: user?.full_name || "",
     mobile: user?.mobile || "",
-    industry: user?.industry || "",
+    industry: (user as any)?.industry || "",
     current_designation: (user as any)?.current_designation || "",
     current_salary: (user as any)?.current_salary || "",
     preferred_designation: (user as any)?.preferred_designation || "",

@@ -18,8 +18,15 @@ export type LaunchOffer = {
   spots_left: number;
 };
 
+const PLACEHOLDER: LaunchOffer = { enabled: true, plans_hidden: true, free_days: 90, spots_total: 100, spots_left: -1 };
+
 export function useLaunchOffer() {
-  return useQuery<LaunchOffer>({ queryKey: ["launch-offer"], queryFn: () => api("/launch-offer", { auth: false }) });
+  // While loading, or if the request fails, treat plans as hidden so paid wording never shows.
+  const q = useQuery<LaunchOffer>({
+    queryKey: ["launch-offer"],
+    queryFn: () => api("/launch-offer", { auth: false }),
+  });
+  return { ...q, data: q.data ?? PLACEHOLDER, isPlaceholderData: !q.data };
 }
 
 /** Replaces membership plans while the free launch offer is running. */
@@ -28,8 +35,8 @@ export function LaunchOfferCard() {
   const { colors } = useTheme();
   const router = useRouter();
   const { user, membership } = useAuth();
-  const { data } = useLaunchOffer();
-  if (!data) return null;
+  const { data, isPlaceholderData } = useLaunchOffer();
+  if (!data || isPlaceholderData) return null;
   const status = (user as any)?.launch_offer;
   const full = data.spots_left <= 0;
 
@@ -48,8 +55,8 @@ export function LaunchOfferCard() {
     cta = null;
     Icon = HourglassIcon;
   } else if (user) {
-    title = "Membership opening soon";
-    body = "Paid membership plans are not open yet. We'll notify you when they are available.";
+    title = "Access not active yet";
+    body = "Your free access is not active right now. Please contact support and we will help you.";
     cta = null;
     Icon = HourglassIcon;
   } else if (!data.enabled) {

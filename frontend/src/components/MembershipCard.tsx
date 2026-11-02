@@ -9,9 +9,11 @@ import { Button } from "@/src/components/ui";
 export function MembershipCard({
   membership,
   onRenew,
+  hidePlanName,
 }: {
   membership: any;
   onRenew?: () => void;
+  hidePlanName?: boolean;
 }) {
   const styles = useStyles();
   const { colors } = useTheme();
@@ -27,7 +29,7 @@ export function MembershipCard({
         <View style={styles.pill}>
           <Text style={styles.pillTxt}>{ui.label}</Text>
         </View>
-        {membership?.is_demo ? (
+        {membership?.is_demo && !hidePlanName ? (
           <View style={styles.demoPill}>
             <Text style={styles.demoTxt}>DEMO</Text>
           </View>
@@ -36,7 +38,7 @@ export function MembershipCard({
 
       {membership?.is_active ? (
         <>
-          <Text style={styles.plan}>{membership.plan_name}</Text>
+          <Text style={styles.plan}>{hidePlanName ? "Full Access" : membership.plan_name}</Text>
           <Text style={styles.days}>
             {membership.days_remaining} day{membership.days_remaining === 1 ? "" : "s"} remaining
           </Text>

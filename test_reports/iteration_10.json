@@ -1,0 +1,29 @@
+{
+  "summary": "Retest of the plans-hiding fix, frontend only, at 390x844. PASS. Failed /api/launch-offer (aborted with page.route, waited 12-15s through react-query retries, about 4 attempts per page): no paid wording, no ₹ prices and no plan names appeared on /, /auth/register, /plans, /membership, /job/:id, /account or /dashboard, as guest or as logged-in candidate. LaunchOfferCard rendered nothing (count 0). Slow request (5s delay): checked at 1.5/3/4.5/6/10s on /, /plans, /auth/register and job detail; always clean, and the card appears after load. With plans_hidden=false, prices (₹599/₹799), 'Membership Plans', 'View Membership Plans', 'Become a Member' and 'Choose a membership' come back on home, /plans and job detail. Settings were restored to enabled:true, plans_hidden:true, 100, 90 (verified via GET). Dashboard section title reads 'Payments' with the 'No payment needed' card and no ₹. Guest /membership header reads 'My Access'. Logged-in non-member job detail shows 'See My Access' and goes to /membership, both normally and with launch-offer failing. Non-member state was simulated by rewriting the /api/auth/me membership in the browser, because test_iter9_nomem_c7dd7d@example.com no longer exists (login returns 401) and registering was not allowed. No page errors. Deprecated packages detected: none checked anew (iteration 9 found none).",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "/plans (plans_hidden=true)", "issues": ["Header is hardcoded 'Membership' (app/plans.tsx:93). Consider 'Free Access' or 'My Access' to match the rest of the hidden-mode copy."]},
+      {"screen": "LaunchOfferCard, logged-in non-member", "issues": ["The copy 'Membership opening soon / Paid membership plans are not open yet' still mentions paid membership plans (src/components/LaunchOffer.tsx:58-59). Optional wording tweak if the user wants zero membership mentions."]}
+    ],
+    "react_native_issues": []
+  },
+  "test_report_links": ["/app/backend/tests/iter9_toggle_helper.py", "/app/backend/tests/iter10_state_check.py"],
+  "action_items": [
+    "Optional: change the /plans hidden-mode header from 'Membership' to neutral copy (app/plans.tsx:93).",
+    "Optional: soften the 'Paid membership plans are not open yet' copy in LaunchOfferCard for logged-in non-members."
+  ],
+  "critical_code_review_comments": [
+    "useLaunchOffer returns q.data ?? PLACEHOLDER (plans_hidden:true), and LaunchOfferCard returns null when isPlaceholderData is set. This correctly fails closed.",
+    "In the failure case a logged-in non-member on /membership sees only the status card and no explanation card. Acceptable, but nothing tells them free access is pending."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "N/A (frontend-only retest)", "frontend": "100%"},
+  "seed_data_creation": "None. Launch settings were toggled to plans_hidden=false and restored to enabled:true, plans_hidden:true, free_spots:100, free_days:90.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "DB now holds real users. test_iter9_nomem_c7dd7d@example.com is gone. To test a non-member without registering, rewrite /api/auth/me in Playwright (route.fetch, then fulfill with membership {is_active:false}). test@jobradar.com is still an active demo member (expires 12 Mar 2027). Toggle settings with: EXPO_PUBLIC_BACKEND_URL=... python3 /app/backend/tests/iter9_toggle_helper.py set <enabled> <hidden>.",
+  "rca_of_issue": "The iteration 10 failed-request leak was fixed by falling back to PLACEHOLDER when the query has no data, so fetch errors keep plans hidden."
+}

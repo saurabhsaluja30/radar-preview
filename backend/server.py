@@ -664,8 +664,10 @@ async def get_config():
 
 @api.get("/plans")
 async def get_plans():
+    if (await get_launch()).get("plans_hidden"):
+        return {"plans": [], "plans_hidden": True}
     plans = await db.plans.find({"active": True}, {"_id": 0}).sort("duration_days", 1).to_list(50)
-    return {"plans": plans}
+    return {"plans": plans, "plans_hidden": False}
 
 
 @api.get("/jobs")
@@ -790,6 +792,8 @@ async def membership(user=Depends(get_current_user)):
     m = await compute_membership(user["user_id"])
     payments = await db.payments.find({"candidate_id": user["user_id"]}, {"_id": 0}).sort("created_at", -1).to_list(100)
     plans = await db.plans.find({"active": True}, {"_id": 0}).sort("duration_days", 1).to_list(50)
+    if (await get_launch()).get("plans_hidden"):
+        plans = []
     return {"membership": m, "payments": payments, "plans": plans}
 
 

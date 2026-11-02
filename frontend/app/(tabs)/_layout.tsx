@@ -27,7 +27,7 @@ export default function TabsLayout() {
         options={{
           title: "Home",
           tabBarIcon: ({ color, focused }) => (
-            <House size={24} color={color} weight={focused ? "fill" : "regular"} />
+            <House size={24} color={color as string} weight={focused ? "fill" : "regular"} />
           ),
         }}
       />
@@ -36,7 +36,7 @@ export default function TabsLayout() {
         options={{
           title: "Explore",
           tabBarIcon: ({ color, focused }) => (
-            <MagnifyingGlass size={24} color={color} weight={focused ? "bold" : "regular"} />
+            <MagnifyingGlass size={24} color={color as string} weight={focused ? "bold" : "regular"} />
           ),
         }}
       />
@@ -45,7 +45,7 @@ export default function TabsLayout() {
         options={{
           title: "Saved",
           tabBarIcon: ({ color, focused }) => (
-            <BookmarkSimple size={24} color={color} weight={focused ? "fill" : "regular"} />
+            <BookmarkSimple size={24} color={color as string} weight={focused ? "fill" : "regular"} />
           ),
         }}
       />
@@ -54,7 +54,7 @@ export default function TabsLayout() {
         options={{
           title: "Account",
           tabBarIcon: ({ color, focused }) => (
-            <UserCircle size={24} color={color} weight={focused ? "fill" : "regular"} />
+            <UserCircle size={24} color={color as string} weight={focused ? "fill" : "regular"} />
           ),
         }}
       />

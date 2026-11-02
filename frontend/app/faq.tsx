@@ -7,7 +7,7 @@ import { makeStyles, useTheme } from "@/src/theme";
 import { ScreenHeader } from "@/src/components/Brand";
 
 const FAQS = [
-  ["What is JobRadar?", "JobRadar is a paid curated job-discovery membership platform by Evolveminds. We collect relevant job opportunities from public sources so you can discover and apply faster."],
+  ["What is JobRadar?", "JobRadar is a curated job-discovery platform by Evolveminds. We collect relevant job opportunities from public sources so you can discover and apply faster."],
   ["Is this a recruitment agency?", "No. JobRadar is not a recruitment agency or marketplace. We provide curated job information for discovery only; you apply directly to employers."],
   ["Does membership guarantee a job?", "No. Membership provides access to curated job information and platform features. It does not guarantee interviews, selection, employment or any response from employers."],
   ["How do I apply for a job?", "Open any job as an active member and tap Apply Now to reach the employer's official application link or public contact details."],

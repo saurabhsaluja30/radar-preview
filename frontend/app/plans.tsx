@@ -91,7 +91,7 @@ export default function Plans() {
   if (launch?.plans_hidden) {
     return (
       <View style={styles.screen}>
-        <ScreenHeader title="Membership" />
+        <ScreenHeader title="My Access" />
         <ScrollView contentContainerStyle={{ padding: 16, gap: 16, paddingBottom: insets.bottom + 40 }}>
           <LaunchOfferCard />
           <OpportunityNotice />
