@@ -1,0 +1,46 @@
+{
+  "summary": "Iteration 7 tested resume file upload (PDF/DOCX), the free launch offer with waitlist, hidden plans/checkout, single-device sessions and regression. Backend: 20/20 new pytest tests pass, covering real AI extraction for DOCX and PDF, txt/empty/>5MB/short-PDF/corrupt-DOCX returning 400, auth required, and the 1-credit usage charge. Also covered: grant on register (90 days, quarterly limit 15), waitlist when spots are full, admin approve (90 days plus a logged email), re-approve returning 404, candidate getting 403 on admin endpoints, checkout returning 400 while hidden and 200 when shown, candidate one-device revoke and admin on several devices. Frontend (375x667): the home hero shows 'Claim Free Access' and goes to /auth/register; LaunchOfferCard appears on home and /plans with no prices or checkout; an active free user sees 'You have free full access'; a waitlisted user sees 'You're on the waitlist' with no button. Admin dashboard entry leads to /admin/launch: settings load, Save works (public API checked), Approve removes the user from the waitlist with a toast. In the resume builder, Experienced shows the rb-upload button and paste box; a real DOCX upload on web reached the Review & Edit screen with fields filled and missing details listed. Logging in elsewhere caused the next in-app API call to show a window.alert and sign the user out. No deprecated Expo packages found.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "tests/test_jobradar.py", "issue": "2 older regression tests are now outdated, not app bugs: test_jobs_list_non_member_locked (new sign-ups now get free access, so is_member is True) and test_demo_checkout_quarterly (checkout returns 400 while plans_hidden). Update these tests to turn plans_hidden/enabled off first."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "LaunchOfferCard", "issue": "The card ignores data.enabled. If an admin turns the offer off but keeps plans hidden, guests still see 'Free for our first N members' and 'Claim Free Access', but new sign-ups get nothing. Reference: /app/frontend/src/components/LaunchOffer.tsx:36-60", "testID": "launch-offer-card", "priority": "MEDIUM"},
+      {"component": "Home hero button", "issue": "Signed-in users who already have free access still see the hero button 'Claim Free Access' (it goes to /plans). Label it 'Explore Jobs' or 'My Access' for members. Reference: /app/frontend/app/(tabs)/index.tsx:115", "testID": "hero-plans-btn", "priority": "LOW"}
+    ],
+    "integration_issues": [
+      {"flow": "Single device during upload", "issue": "uploadForm's parse() does not call the signed-out handler on a 401 'another device' error. A revoked user uploading a resume sees only an error toast and stays 'logged in'. Reference: /app/frontend/src/utils/upload.ts:38-41", "affected_testIDs": ["rb-upload"]},
+      {"flow": "Native resume upload (not verifiable on web)", "issue": "On native, upload.ts reads the file with expoFetch(file.uri).blob() and appends the Blob to FormData. The expo/fetch docs say FormData uploads should use the File class from expo-file-system (formData.append('file', new File(uri))); appending an RN Blob may fail or send an empty body on iOS/Android. Reference: /app/frontend/src/utils/upload.ts:24-26", "affected_testIDs": ["rb-upload"]}
+    ],
+    "design_issues": [
+      {"screen": "/admin/launch", "issues": ["The Switch has no thumbColor, so on web the thumb is the default teal, not the brand purple.", "The Switch hit area is 40x20, below the 44pt minimum.", "No loading or error state while the /admin/launch-offer query loads or fails (the settings card simply doesn't render)."]},
+      {"screen": "/plans (plans hidden)", "issues": ["The info card under LaunchOfferCard still says 'Please select a membership only if...', which is confusing when no plans can be selected."]}
+    ],
+    "react_native_issues": []
+  },
+  "test_report_links": ["/app/backend/tests/test_launch_offer_upload.py", "/app/backend/tests/seed_iter7_ui.py", "/app/test_reports/pytest/pytest_iter7.xml"],
+  "action_items": [
+    "LaunchOfferCard: when !data.enabled (and the user isn't active), show the 'Membership opening soon' state, not the free-spots offer.",
+    "upload.ts parse(): on a 401 whose detail includes 'another device', call the same signed-out handler as api() (export a helper from client.ts).",
+    "Native upload: switch to `new File(f.uri)` from expo-file-system appended to FormData with expo/fetch, then check on a device or Expo Go.",
+    "Optional: change the hero button label for signed-in members; set Switch thumbColor and a larger hit area; change the 'Please select a membership' copy while plans are hidden.",
+    "Update outdated tests in tests/test_jobradar.py (non-member locked, demo checkout) to turn the launch offer off first.",
+    "Reset the launch 'granted' counter (now 7 because of test sign-ups). Settings were restored to enabled:true, plans_hidden:true, free_spots:100, free_days:90."
+  ],
+  "critical_code_review_comments": [
+    "server.py is 1617 lines and career.py 1034 lines, over the 700-line guideline; consider splitting launch/auth/admin routers.",
+    "extract-file checks the size and empty file before require_tool; fine, but unauthenticated requests are rejected first by Depends (verified 401).",
+    "_apply_launch_offer claims a spot atomically with find_one_and_update and $lt, which is safe under concurrent sign-ups.",
+    "Revoked sessions are never deleted (they pile up in user_sessions); consider a TTL index on expires_at."
+  ],
+  "updated_files": ["/app/backend/tests/test_launch_offer_upload.py (new)", "/app/backend/tests/seed_iter7_ui.py (new)"],
+  "success_rate": {"backend": "100% (20/20 new tests); old suite 25/27 (2 tests outdated by design)", "frontend": "100% of requested flows passed; 2 minor UI and 2 integration risks reported"},
+  "seed_data_creation": "Registered TEST_ candidates: test_granted_*, test_waitlist_* (approved), test_nooffer_* (demo-paid), test_ui_granted_57b83349@example.com (granted, consented, has an uploaded resume), test_ui_wait_d97dedbd@example.com (waitlisted, then approved via the admin UI). Password for all is Test@12345. The launch granted counter rose to 7.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Run pytest with -n 0 (pytest.ini adds xdist). Registration needs industry, current_designation, current_salary, preferred_location and preferred_work_mode. Only candidates are limited to one device, so use fresh candidates per context. On web, expo-document-picker opens a file chooser: use page.expect_file_chooser() and click rb-upload. The sign-out alert is a window.alert, so capture it with page.on('dialog').",
+  "rca_of_issue": ""
+}

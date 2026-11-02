@@ -104,6 +104,7 @@ function AdminDashboard() {
     { icon: Receipt, label: "Payments", to: "/admin/payments" },
     { icon: EnvelopeSimple, label: "Email Logs", to: "/admin/emails" },
     { icon: Briefcase, label: "Career Tools", to: "/admin/career" },
+    { icon: Briefcase, label: "Launch Offer & Waitlist", to: "/admin/launch" },
   ];
 
   return (

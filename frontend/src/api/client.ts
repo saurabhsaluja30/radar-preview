@@ -55,7 +55,18 @@ export async function api<T = any>(path: string, opts: Options = {}): Promise<T>
 
   if (!res.ok) {
     const detail = (data && (data.detail || data.message)) || `Request failed (${res.status})`;
+    if (res.status === 401 && auth && authToken && typeof detail === "string") notifySignedOut(detail);
     throw new ApiError(typeof detail === "string" ? detail : "Request failed", res.status);
   }
   return data as T;
+}
+
+let onSignedOutElsewhere: ((msg: string) => void) | null = null;
+/** Registers a handler called when the server signs this device out (account used on another device). */
+export function setSignedOutHandler(fn: ((msg: string) => void) | null) {
+  onSignedOutElsewhere = fn;
+}
+
+export function notifySignedOut(detail: string) {
+  if (detail.includes("another device")) onSignedOutElsewhere?.(detail);
 }

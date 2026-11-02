@@ -54,3 +54,6 @@ Keep the subscription/activation logic (`_activate_subscription`). Replace `/api
 - Frontend: /career (hub), /career/resume-builder, /career/resume/[id], /career/analyser, /career/interview, /career/interview/[id], /career/history, /admin/career; dashboard Career Tools cards; job detail "Prepare for Interview"; Explore saved searches.
 - Voice answers not implemented (text-first as allowed).
 - Resume Builder v2: type chooser; 3 fresher templates (general/IT/finance) with SAMPLE preview — hints stored as `hint`, never exported; experienced paste → POST /api/career/resumes/extract (AI, missing_fields, 422 for non-resume); editor with Classic/Modern/Compact styles, preview, Add Work Experience, Save/Download bar, Customise for a Job (notes).
+- Resume upload: POST /api/career/resumes/extract-file (PDF via pypdf, DOCX via python-docx, ≤5MB) → same AI extraction. Frontend uses expo-document-picker + src/utils/upload.ts.
+- Launch offer: app_settings{key:launch_offer} (enabled, plans_hidden, free_spots=100, free_days=90, granted). Atomic grant on register/Google signup; else waitlisted. Admin page /admin/launch (settings + waitlist approve). /plans & home show LaunchOfferCard while plans hidden; checkout blocked.
+- Single device: create_session revokes other candidate sessions; client 401 handler signs user out with alert.

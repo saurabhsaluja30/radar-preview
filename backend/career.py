@@ -13,7 +13,7 @@ import logging
 from datetime import timedelta
 from typing import Dict, List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
@@ -67,6 +67,7 @@ TEMPLATES = {
 }
 
 _inflight: set = set()
+MAX_UPLOAD = 5 * 1024 * 1024
 
 
 # ---------------------------------------------------------------------------
@@ -414,11 +415,51 @@ def build_router(db, get_current_user, require_admin, compute_membership, now_ut
             await record_usage(user, "resume_generation", doc["resume_id"])
         return {"resume": doc}
 
+    def file_to_text(name: str, data: bytes) -> str:
+        n = (name or "").lower()
+        try:
+            if n.endswith(".pdf") or data[:4] == b"%PDF":
+                from pypdf import PdfReader
+                reader = PdfReader(io.BytesIO(data))
+                return "\n".join((pg.extract_text() or "") for pg in reader.pages[:10])
+            if n.endswith(".docx") or data[:2] == b"PK":
+                from docx import Document
+                d = Document(io.BytesIO(data))
+                parts = [para.text for para in d.paragraphs]
+                for t in d.tables:
+                    for row in t.rows:
+                        parts.append(" | ".join(c.text.strip() for c in row.cells if c.text.strip()))
+                return "\n".join(parts)
+        except Exception as e:
+            logger.warning(f"resume file parse failed: {e}")
+            raise HTTPException(400, "We couldn't open this file. Please upload a valid PDF or Word (.docx) file, "
+                                     "or copy and paste your resume text instead.")
+        raise HTTPException(400, "Unsupported file type. Please upload a PDF or Word (.docx) file. "
+                                 "Older .doc files: save as .docx or paste the text.")
+
+    @r.post("/career/resumes/extract-file")
+    async def extract_resume_file(file: UploadFile = File(...), user=Depends(get_current_user)):
+        data = await file.read(MAX_UPLOAD + 1)
+        if len(data) > MAX_UPLOAD:
+            raise HTTPException(400, "File is too large. Please upload a file under 5 MB.")
+        if not data:
+            raise HTTPException(400, "The uploaded file is empty.")
+        await require_tool(user, "resume_builder")
+        text = re.sub(r"[ \t]+", " ", file_to_text(file.filename, data)).strip()
+        if len(text) < 150:
+            raise HTTPException(400, "We couldn't read enough text from this file (it may be a scanned image). "
+                                     "Please copy and paste your resume text instead.")
+        title = re.sub(r"\.(pdf|docx)$", "", file.filename or "", flags=re.I)[:60] or None
+        return await do_extract(user, _clean(text, 15000), f"Experienced Resume ({title})" if title else None)
+
     @r.post("/career/resumes/extract")
     async def extract_resume(req: ExtractReq, user=Depends(get_current_user)):
         text = _clean(req.resume_text, 15000)
         if len(text) < 150:
             raise HTTPException(400, "Please paste your complete resume (at least 150 characters) so we can read it")
+        return await do_extract(user, text, req.title)
+
+    async def do_extract(user, text: str, title: Optional[str]):
         await require_tool(user, "resume_builder")
         with Lock(user, "resume_generation"):
             data = await ai_json(user, "resume_extract",
@@ -440,7 +481,7 @@ def build_router(db, get_current_user, require_admin, compute_membership, now_ut
             for k, label in (("full_name", "Full name"), ("email", "Email"), ("phone", "Phone number")):
                 if not pers.get(k) and label not in missing:
                     missing.insert(0, label)
-            doc = await save_resume(user, req.title or "Experienced Resume", "experienced", pers,
+            doc = await save_resume(user, title or "Experienced Resume", "experienced", pers,
                                     data.get("sections"), "", "ai_extract", "classic", missing)
             await record_usage(user, "resume_generation", doc["resume_id"])
         return {"resume": doc}

@@ -28,6 +28,7 @@ import { BrandLogo } from "@/src/components/Brand";
 import { Button, Card } from "@/src/components/ui";
 import { CATEGORIES, INDUSTRIES, INDUSTRY_SHORT } from "@/src/constants";
 import { money } from "@/src/utils/format";
+import { LaunchOfferCard, useLaunchOffer } from "@/src/components/LaunchOffer";
 
 const HERO =
   "https://images.unsplash.com/photo-1768101225267-c6fc5678c113?crop=entropy&cs=srgb&fm=jpg&q=85&w=1200";
@@ -62,6 +63,7 @@ export default function Home() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { user } = useAuth();
+  const { data: launch } = useLaunchOffer();
 
   const { data: cfg } = useQuery({ queryKey: ["config"], queryFn: () => api("/config", { auth: false }) });
   const { data: plansData } = useQuery({ queryKey: ["plans"], queryFn: () => api("/plans", { auth: false }) });
@@ -110,10 +112,10 @@ export default function Home() {
                 testID="hero-explore-btn"
               />
               <Button
-                title="View Membership Plans"
+                title={launch?.plans_hidden ? (user ? "My Access" : "Claim Free Access") : "View Membership Plans"}
                 variant="secondary"
                 fullWidth={false}
-                onPress={() => router.push("/plans")}
+                onPress={() => router.push(launch?.plans_hidden && !user ? "/auth/register" : "/plans")}
                 testID="hero-plans-btn"
               />
             </View>
@@ -200,7 +202,12 @@ export default function Home() {
           </Card>
         </View>
 
-        {/* Membership plans preview */}
+        {/* Membership plans preview (replaced by the free launch offer while plans are hidden) */}
+        {launch?.plans_hidden ? (
+          <View style={styles.section}>
+            <LaunchOfferCard />
+          </View>
+        ) : (
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Membership Plans</Text>
           <ScrollView
@@ -230,6 +237,7 @@ export default function Home() {
             <Button title="Become a Member" onPress={() => router.push("/plans")} testID="become-member-btn" />
           </View>
         </View>
+        )}
 
         {/* Disclaimer */}
         <View style={styles.section}>

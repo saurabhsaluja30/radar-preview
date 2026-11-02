@@ -13,6 +13,7 @@ import { ScreenHeader } from "@/src/components/Brand";
 import { OpportunityNotice } from "@/src/components/OpportunityNotice";
 import { useToast } from "@/src/components/Toast";
 import { money } from "@/src/utils/format";
+import { LaunchOfferCard, useLaunchOffer } from "@/src/components/LaunchOffer";
 
 const BENEFITS = [
   "Full curated job descriptions",
@@ -29,6 +30,7 @@ export default function Plans() {
   const router = useRouter();
   const { user, refresh } = useAuth();
   const toast = useToast();
+  const { data: launch } = useLaunchOffer();
 
   const { data } = useQuery({ queryKey: ["plans"], queryFn: () => api("/plans", { auth: false }) });
   const plans: any[] = data?.plans || [];
@@ -85,6 +87,18 @@ export default function Plans() {
       setLoading(false);
     }
   };
+
+  if (launch?.plans_hidden) {
+    return (
+      <View style={styles.screen}>
+        <ScreenHeader title="Membership" />
+        <ScrollView contentContainerStyle={{ padding: 16, gap: 16, paddingBottom: insets.bottom + 40 }}>
+          <LaunchOfferCard />
+          <OpportunityNotice />
+        </ScrollView>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.screen}>

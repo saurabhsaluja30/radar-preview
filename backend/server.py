@@ -201,8 +201,17 @@ def parse_dt(v) -> Optional[datetime]:
         return None
 
 
+SIGNED_OUT_ELSEWHERE = ("You were signed out because your account was signed in on another device. "
+                        "Each JobRadar account can be used on one device at a time.")
+
+
 async def create_session(user_id: str) -> str:
     token = f"jr_{uuid.uuid4().hex}{uuid.uuid4().hex}"
+    u = await db.users.find_one({"user_id": user_id}, {"_id": 0, "role": 1})
+    if (u or {}).get("role") == "candidate":
+        # One device at a time: a new login signs out every other device for this candidate.
+        await db.user_sessions.update_many({"user_id": user_id, "revoked": {"$ne": True}},
+                                           {"$set": {"revoked": True, "revoked_at": now_iso()}})
     await db.user_sessions.insert_one({
         "session_token": token,
         "user_id": user_id,
@@ -227,6 +236,8 @@ async def get_current_user(authorization: Optional[str] = Header(None)):
     session = await db.user_sessions.find_one({"session_token": token}, {"_id": 0})
     if not session:
         raise HTTPException(status_code=401, detail="Invalid session")
+    if session.get("revoked"):
+        raise HTTPException(status_code=401, detail=SIGNED_OUT_ELSEWHERE)
     exp = parse_dt(session.get("expires_at"))
     if exp and exp < now_utc():
         raise HTTPException(status_code=401, detail="Session expired")
@@ -493,10 +504,10 @@ async def register(req: RegisterReq):
         "status": "active",
     }
     await db.users.insert_one(dict(doc))
+    offer = await _apply_launch_offer(user_id)
     token = await create_session(user_id)
     inner = (f'<p style="color:#374151;font-size:15px">Hi {escape(req.full_name)},</p>'
-             '<p style="color:#374151;font-size:15px">Welcome to JobRadar by Evolveminds! Your account is ready. '
-             'Choose a membership plan to unlock curated job opportunities and apply directly to employers.</p>')
+             f'<p style="color:#374151;font-size:15px">Welcome to JobRadar by Evolveminds! {_welcome_line(offer)}</p>')
     await send_and_log_email(candidate_id=user_id, to=req.email.lower(), email_type="welcome",
                              subject="Welcome to JobRadar by Evolveminds", html=_wrap_email("Welcome aboard!", inner))
     user = await db.users.find_one({"user_id": user_id}, {"_id": 0, "password": 0})
@@ -550,9 +561,9 @@ async def google_session(req: SessionReq):
             "preferred_experience": None, "consent": True, "suspended": False,
             "created_at": now_iso(), "updated_at": now_iso(), "status": "active",
         })
+        offer = await _apply_launch_offer(user_id)
         inner = (f'<p style="color:#374151;font-size:15px">Hi {escape(data.get("name") or "there")},</p>'
-                 '<p style="color:#374151;font-size:15px">Welcome to JobRadar by Evolveminds! '
-                 'Choose a membership plan to unlock curated job opportunities.</p>')
+                 f'<p style="color:#374151;font-size:15px">Welcome to JobRadar by Evolveminds! {_welcome_line(offer)}</p>')
         await send_and_log_email(candidate_id=user_id, to=email, email_type="welcome",
                                  subject="Welcome to JobRadar by Evolveminds",
                                  html=_wrap_email("Welcome aboard!", inner))
@@ -821,8 +832,112 @@ async def _activate_subscription(candidate_id: str, plan: dict, is_demo: bool, p
     return await compute_membership(candidate_id)
 
 
+# ---------------------------------------------------------------------------
+# Launch offer: first N new registrations get free access; later sign-ups join a waitlist.
+# ---------------------------------------------------------------------------
+LAUNCH_DEFAULT = {"key": "launch_offer", "enabled": True, "plans_hidden": True, "free_spots": 100,
+                  "free_days": 90, "granted": 0}
+
+
+async def get_launch() -> dict:
+    s = await db.app_settings.find_one({"key": "launch_offer"}, {"_id": 0})
+    if not s:
+        s = dict(LAUNCH_DEFAULT, started_at=now_iso())
+        await db.app_settings.insert_one(dict(s))
+        s.pop("_id", None)
+    return s
+
+
+async def _grant_free_access(user_id: str, days: int, source: str) -> dict:
+    base = await db.plans.find_one({"duration_days": 90}, {"_id": 0}) or {}
+    plan = {"plan_id": base.get("plan_id", "launch_offer"), "name": f"Launch Offer (Free {days} days)",
+            "duration_days": days}
+    m = await _activate_subscription(user_id, plan, False, None)
+    await db.subscriptions.update_one({"subscription_id": m["subscription_id"]}, {"$set": {"source": source}})
+    return m
+
+
+async def _apply_launch_offer(user_id: str) -> str:
+    s = await get_launch()
+    if not s.get("enabled"):
+        return "none"
+    # Atomic claim of a free spot (safe under simultaneous sign-ups).
+    claimed = await db.app_settings.find_one_and_update(
+        {"key": "launch_offer", "granted": {"$lt": int(s.get("free_spots", 100))}}, {"$inc": {"granted": 1}})
+    if claimed:
+        rank = int(claimed.get("granted", 0)) + 1
+        await _grant_free_access(user_id, int(s.get("free_days", 90)), "launch_offer")
+        await db.users.update_one({"user_id": user_id}, {"$set": {"launch_offer": "granted",
+                                                                  "launch_offer_rank": rank}})
+        return "granted"
+    await db.users.update_one({"user_id": user_id}, {"$set": {"launch_offer": "waitlisted",
+                                                              "waitlisted_at": now_iso()}})
+    return "waitlisted"
+
+
+def _welcome_line(offer: str) -> str:
+    if offer == "granted":
+        return ("You are one of our first members, so you get <strong>free full access</strong> "
+                "to curated jobs and Career Tools. Explore now!")
+    if offer == "waitlisted":
+        return ("Our free launch spots are full, so you have been added to the waitlist. "
+                "We will email you as soon as your access is approved.")
+    return "Choose a membership plan to unlock curated job opportunities and apply directly to employers."
+
+
+class LaunchReq(BaseModel):
+    enabled: bool
+    plans_hidden: bool
+    free_spots: int
+    free_days: int
+
+
+@api.get("/launch-offer")
+async def launch_offer_public():
+    s = await get_launch()
+    return {"enabled": s["enabled"], "plans_hidden": s["plans_hidden"], "free_days": s["free_days"],
+            "spots_total": s["free_spots"], "spots_left": max(0, s["free_spots"] - s.get("granted", 0))}
+
+
+@api.get("/admin/launch-offer")
+async def admin_launch_get(admin=Depends(require_admin)):
+    s = await get_launch()
+    wait = await db.users.find({"role": "candidate", "launch_offer": "waitlisted"},
+                               {"_id": 0, "user_id": 1, "full_name": 1, "email": 1, "mobile": 1,
+                                "waitlisted_at": 1, "industry": 1}).sort("waitlisted_at", 1).to_list(1000)
+    return {"settings": s, "waitlist": wait}
+
+
+@api.put("/admin/launch-offer")
+async def admin_launch_put(req: LaunchReq, admin=Depends(require_admin)):
+    await get_launch()
+    await db.app_settings.update_one({"key": "launch_offer"}, {"$set": {
+        "enabled": req.enabled, "plans_hidden": req.plans_hidden,
+        "free_spots": max(0, min(100000, req.free_spots)), "free_days": max(1, min(3650, req.free_days)),
+        "updated_at": now_iso()}})
+    return await admin_launch_get(admin)
+
+
+@api.post("/admin/launch-offer/approve/{user_id}")
+async def admin_launch_approve(user_id: str, admin=Depends(require_admin)):
+    u = await db.users.find_one({"user_id": user_id, "launch_offer": "waitlisted"}, {"_id": 0})
+    if not u:
+        raise HTTPException(status_code=404, detail="Candidate is not on the waitlist")
+    s = await get_launch()
+    m = await _grant_free_access(user_id, int(s.get("free_days", 90)), "waitlist_approved")
+    await db.users.update_one({"user_id": user_id}, {"$set": {"launch_offer": "approved", "approved_at": now_iso()}})
+    inner = (f'<p style="color:#374151;font-size:15px">Hi {escape(u.get("full_name") or "there")},</p>'
+             f'<p style="color:#374151;font-size:15px">Good news! Your JobRadar access is approved. You have '
+             f'free full access until <strong>{escape(m["expiry_date"][:10])}</strong>.</p>')
+    await send_and_log_email(candidate_id=user_id, to=u["email"], email_type="waitlist_approved",
+                             subject="Your JobRadar access is approved", html=_wrap_email("You're in!", inner))
+    return {"success": True, "membership": m}
+
+
 @api.post("/checkout/demo")
 async def checkout_demo(req: CheckoutReq, user=Depends(get_current_user)):
+    if (await get_launch()).get("plans_hidden"):
+        raise HTTPException(status_code=400, detail="Membership plans are not available right now.")
     plan = await db.plans.find_one({"plan_id": req.plan_id, "active": True}, {"_id": 0})
     if not plan:
         raise HTTPException(status_code=404, detail="Plan not found")

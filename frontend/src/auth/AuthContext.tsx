@@ -1,9 +1,9 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
-import { Platform } from "react-native";
+import { Alert, Platform } from "react-native";
 import * as WebBrowser from "expo-web-browser";
 import * as Linking from "expo-linking";
 
-import { api, setAuthToken } from "@/src/api/client";
+import { api, setAuthToken, setSignedOutHandler } from "@/src/api/client";
 import { storage } from "@/src/utils/storage";
 
 WebBrowser.maybeCompleteAuthSession();
@@ -131,6 +131,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       sub.remove();
     };
   }, [exchangeSession, refresh]);
+
+  // One device at a time: if the server reports this device was signed out, clear local session.
+  useEffect(() => {
+    setSignedOutHandler(async (msg) => {
+      setUser(null);
+      setMembership(null);
+      setAuthToken(null);
+      await storage.secureRemove(TOKEN_KEY);
+      if (Platform.OS === "web") window.alert(msg);
+      else Alert.alert("Signed out", msg);
+    });
+    return () => setSignedOutHandler(null);
+  }, []);
 
   const login = useCallback(
     async (email: string, password: string) => {

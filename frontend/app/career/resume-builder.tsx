@@ -3,9 +3,11 @@ import { Pressable, Text, TextInput, View } from "react-native";
 import { useRouter } from "expo-router";
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { GraduationCapIcon, BriefcaseIcon, CheckCircleIcon } from "phosphor-react-native";
+import { GraduationCapIcon, BriefcaseIcon, CheckCircleIcon, UploadSimpleIcon } from "phosphor-react-native";
+import * as DocumentPicker from "expo-document-picker";
 
 import { api } from "@/src/api/client";
+import { uploadForm } from "@/src/utils/upload";
 import { useAuth } from "@/src/auth/AuthContext";
 import { ScreenHeader } from "@/src/components/Brand";
 import { Badge, Button, Card } from "@/src/components/ui";
@@ -69,6 +71,35 @@ export default function ResumeBuilder() {
           sections: sections.map((s) => ({ title: s.title, content: "", hint: s.hint + (s.optional ? "\n(Optional — remove if not needed)" : "") })),
         },
       });
+      router.replace(`/career/resume/${res.resume.resume_id}` as any);
+    } catch (e) {
+      toast.show(formatErr(e), "error");
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const uploadFile = async () => {
+    if (busy) return;
+    const pick = await DocumentPicker.getDocumentAsync({
+      type: [
+        "application/pdf",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      ],
+      copyToCacheDirectory: true,
+    });
+    if (pick.canceled || !pick.assets?.[0]) return;
+    const f = pick.assets[0];
+    if (f.size && f.size > 5 * 1024 * 1024) return toast.show("Please choose a file under 5 MB", "error");
+    setBusy("upload");
+    try {
+      const res = await uploadForm<{ resume: any }>("/career/resumes/extract-file", {
+        uri: f.uri,
+        name: f.name,
+        mimeType: f.mimeType,
+      });
+      await invalidate();
+      toast.show("Resume auto-filled — please review every section", "success");
       router.replace(`/career/resume/${res.resume.resume_id}` as any);
     } catch (e) {
       toast.show(formatErr(e), "error");
@@ -162,9 +193,25 @@ export default function ResumeBuilder() {
             <View style={{ gap: 14 }}>
               <Text style={styles.h}>Create Your Resume in Minutes</Text>
               <Text style={styles.p}>
-                Copy and paste your existing resume below. JobRadar will extract the information and organise it into a
-                professional, ATS-friendly format.
+                Upload your existing resume, or copy and paste it below. JobRadar will extract the information and
+                organise it into a professional, ATS-friendly format.
               </Text>
+              <Card style={{ gap: 10 }} testID="rb-upload-card">
+                <Text style={styles.h2}>Upload Your Resume</Text>
+                <Text style={styles.muted}>PDF or Word (.docx), up to 5 MB. Scanned images can&apos;t be read — paste the text instead.</Text>
+                <Button
+                  title="Upload PDF or Word File"
+                  icon={<UploadSimpleIcon size={18} color={colors.onBrandPrimary} />}
+                  loading={busy === "upload"}
+                  disabled={!!busy && busy !== "upload"}
+                  onPress={uploadFile}
+                  testID="rb-upload"
+                />
+                {busy === "upload" ? (
+                  <Text style={styles.muted}>Reading your file and organising sections… about 20–40 seconds.</Text>
+                ) : null}
+              </Card>
+              <Text style={[styles.muted, { textAlign: "center" }]}>— or —</Text>
               <View>
                 <Text style={styles.label}>Paste Your Existing Resume</Text>
                 <TextInput
