@@ -73,6 +73,9 @@ export default function JobEdit() {
       toast.show(id ? "Job updated" : "Job created", "success");
       qc.invalidateQueries({ queryKey: ["admin-jobs"] });
       qc.invalidateQueries({ queryKey: ["jobs"] });
+      qc.invalidateQueries({ queryKey: ["job"] });
+      qc.invalidateQueries({ queryKey: ["saved-jobs"] });
+      qc.invalidateQueries({ queryKey: ["dashboard"] });
       router.back();
     } catch (e: any) {
       toast.show(e.message || "Failed", "error");

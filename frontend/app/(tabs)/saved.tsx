@@ -2,6 +2,7 @@ import React from "react";
 import { FlatList, RefreshControl, Text, View } from "react-native";
 import { useRouter } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
+import { useRefreshOnFocus } from "@/src/hooks/useRefreshOnFocus";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { api } from "@/src/api/client";
@@ -22,6 +23,7 @@ export default function Saved() {
     queryFn: () => api("/saved-jobs"),
     enabled: !!user,
   });
+  useRefreshOnFocus(refetch);
   const jobs: Job[] = data?.jobs || [];
 
   if (!user) {

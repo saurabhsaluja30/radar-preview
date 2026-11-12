@@ -36,6 +36,8 @@ export default function AdminJobs() {
       await fn();
       toast.show(msg, "success");
       qc.invalidateQueries({ queryKey: ["admin-jobs"] });
+      qc.invalidateQueries({ queryKey: ["jobs"] });
+      qc.invalidateQueries({ queryKey: ["job"] });
       setMenuFor(null);
     } catch (e: any) {
       toast.show(e.message || "Failed", "error");

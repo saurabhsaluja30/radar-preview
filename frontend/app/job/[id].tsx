@@ -2,6 +2,7 @@ import React from "react";
 import { Pressable, ScrollView, Text, View, Platform } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useRefreshOnFocus } from "@/src/hooks/useRefreshOnFocus";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { BlurView } from "expo-blur";
 import * as Linking from "expo-linking";
@@ -38,10 +39,11 @@ export default function JobDetail() {
   const toast = useToast();
   const qc = useQueryClient();
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, refetch: refetchJob } = useQuery({
     queryKey: ["job", id, user?.user_id],
     queryFn: () => api(`/jobs/${id}`, { auth: !!user }),
   });
+  useRefreshOnFocus(refetchJob);
 
   const job = data?.job;
   const locked = job?.locked;

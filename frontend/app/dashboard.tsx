@@ -2,6 +2,7 @@ import React from "react";
 import { Pressable, ScrollView, Text, View } from "react-native";
 import { useRouter } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
+import { useRefreshOnFocus } from "@/src/hooks/useRefreshOnFocus";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { api } from "@/src/api/client";
@@ -23,11 +24,12 @@ export default function Dashboard() {
   const { user } = useAuth();
   const { data: launch } = useLaunchOffer();
 
-  const { data } = useQuery({
+  const { data, refetch: refetchDash } = useQuery({
     queryKey: ["dashboard", user?.user_id],
     queryFn: () => api("/dashboard"),
     enabled: !!user,
   });
+  useRefreshOnFocus(refetchDash);
 
   if (!user) {
     return (

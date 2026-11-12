@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { FlatList, Pressable, RefreshControl, Text, TextInput, View, ScrollView } from "react-native";
 import { useLocalSearchParams } from "expo-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useRefreshOnFocus } from "@/src/hooks/useRefreshOnFocus";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { MagnifyingGlass, SlidersHorizontal, BookmarkSimpleIcon, XIcon } from "phosphor-react-native";
 import { useToast } from "@/src/components/Toast";
@@ -36,6 +37,7 @@ export default function Explore() {
   });
 
   const jobs: Job[] = data?.jobs || [];
+  useRefreshOnFocus(refetch);
 
   const toast = useToast();
   const qc = useQueryClient();
